@@ -1,0 +1,1845 @@
+[
+  {
+    "sheetName": "1010",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Tú",
+      "Kiên",
+      "Tạ Ánh",
+      "Quân"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 10/10",
+        "amount": 240000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Trường + Thủy": 60000,
+          "Băng + Tâm": 60000,
+          "Tú": 30000,
+          "Kiên": 30000,
+          "Tạ Ánh": 30000,
+          "Quân": 30000
+        }
+      },
+      {
+        "title": "Tiền cầu (3 quả) 10/10",
+        "amount": 85000,
+        "paidBy": "Trường + Thủy",
+        "shares": {
+          "Trường + Thủy": 21250,
+          "Băng + Tâm": 21250,
+          "Tú": 10625,
+          "Kiên": 10625,
+          "Tạ Ánh": 10625,
+          "Quân": 10625
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 03/10",
+        "amount": 190000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 27143,
+          "Trường + Thủy": 54286,
+          "Băng + Tâm": 54286,
+          "Tú": 27143,
+          "Kiên": 27143
+        }
+      },
+      {
+        "title": "Tiền cầu (5 quả) 03/10",
+        "amount": 141667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 20238,
+          "Trường + Thủy": 40476,
+          "Băng + Tâm": 40476,
+          "Tú": 20238,
+          "Kiên": 20238
+        }
+      },
+      {
+        "title": "Revice + đá",
+        "amount": 60000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 8571,
+          "Trường + Thủy": 17143,
+          "Băng + Tâm": 17143,
+          "Tú": 8571,
+          "Kiên": 8571
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -154591,
+      "Trường + Thủy": 0,
+      "Băng + Tâm": 0,
+      "Tú": 0,
+      "Kiên": 255216,
+      "Tạ Ánh": 0,
+      "Quân": -40625
+    },
+    "totalDebtSum": 60000
+  },
+  {
+    "sheetName": "2609",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Tú",
+      "Kiên",
+      "Thái",
+      "Thảo + Ny",
+      "Diệp",
+      "Châu Linh",
+      "Quân"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 19/09",
+        "amount": 380000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 29231,
+          "Trường + Thủy": 58462,
+          "Băng + Tâm": 58462,
+          "Tú": 29231,
+          "Kiên": 29231,
+          "Thái": 29231,
+          "Thảo + Ny": 58462,
+          "Diệp": 29231,
+          "Châu Linh": 29231,
+          "Quân": 29231
+        }
+      },
+      {
+        "title": "Tiền cầu (6 quả) 19/09",
+        "amount": 170000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 13077,
+          "Trường + Thủy": 26154,
+          "Băng + Tâm": 26154,
+          "Tú": 13077,
+          "Kiên": 13077,
+          "Thái": 13077,
+          "Thảo + Ny": 26154,
+          "Diệp": 13077,
+          "Châu Linh": 13077,
+          "Quân": 13077
+        }
+      },
+      {
+        "title": "Tiền nước + đá",
+        "amount": 60000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 12000,
+          "Trường + Thủy": 12000,
+          "Tú": 12000,
+          "Kiên": 12000,
+          "Quân": 12000
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 26/09",
+        "amount": 265000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 37857,
+          "Trường + Thủy": 75714,
+          "Tú": 37857,
+          "Thái": 37857,
+          "Thảo + Ny": 37857,
+          "Châu Linh": 37857
+        }
+      },
+      {
+        "title": "Tiền cầu (4 quả) 26/09",
+        "amount": 113333,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 16190,
+          "Trường + Thủy": 32381,
+          "Tú": 16190,
+          "Thái": 16190,
+          "Thảo + Ny": 16190,
+          "Châu Linh": 16190
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -65825,
+      "Trường + Thủy": 0,
+      "Băng + Tâm": 0,
+      "Tú": -217397,
+      "Kiên": 283222,
+      "Thái": 0,
+      "Thảo + Ny": 0,
+      "Diệp": 0,
+      "Châu Linh": 0,
+      "Quân": 0
+    },
+    "totalDebtSum": 0
+  },
+  {
+    "sheetName": "1209",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Tú",
+      "Kiên",
+      "Thái",
+      "Thảo",
+      "Phan",
+      "Châu Linh",
+      "Ngân"
+    ],
+    "expenses": [
+      {
+        "title": "[-] Bù trừ nợ đợt trước",
+        "amount": 8,
+        "paidBy": "Đánh cầu 22/08",
+        "shares": {
+          "Toàn": 0,
+          "Trường + Thủy": 0,
+          "Băng + Tâm": 0,
+          "Tú": 0,
+          "Kiên": 0,
+          "Thái": 0,
+          "Thảo": 0,
+          "Phan": 0,
+          "Châu Linh": 0,
+          "Ngân": 0
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 12/09",
+        "amount": 345000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 34500,
+          "Trường + Thủy": 69000,
+          "Băng + Tâm": 69000,
+          "Tú": 34500,
+          "Kiên": 34500,
+          "Thái": 34500,
+          "Thảo": 34500,
+          "Phan": 34500
+        }
+      },
+      {
+        "title": "Tiền cầu (8 quả) 12/09",
+        "amount": 226667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 22667,
+          "Trường + Thủy": 45333,
+          "Băng + Tâm": 45333,
+          "Tú": 22667,
+          "Kiên": 22667,
+          "Thái": 22667,
+          "Thảo": 22667,
+          "Phan": 22667
+        }
+      },
+      {
+        "title": "Trà đá (2 can)",
+        "amount": 50000,
+        "paidBy": "Phan",
+        "shares": {
+          "Toàn": 5000,
+          "Trường + Thủy": 10000,
+          "Băng + Tâm": 10000,
+          "Tú": 5000,
+          "Kiên": 5000,
+          "Thái": 5000,
+          "Thảo": 5000,
+          "Phan": 5000
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 05/09",
+        "amount": 240000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 34286,
+          "Băng + Tâm": 68571,
+          "Kiên": 34286,
+          "Thảo": 34286,
+          "Châu Linh": 34286,
+          "Ngân": 34286
+        }
+      },
+      {
+        "title": "Tiền cầu (3 quả) 05/09",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 12143,
+          "Băng + Tâm": 24286,
+          "Kiên": 12143,
+          "Thảo": 12143,
+          "Châu Linh": 12143,
+          "Ngân": 12143
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 22/08",
+        "amount": 205000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 25625,
+          "Trường + Thủy": 51250,
+          "Tú": 25625,
+          "Kiên": 25625,
+          "Thái": 25625,
+          "Thảo": 25625,
+          "Châu Linh": 25625
+        }
+      },
+      {
+        "title": "Tiền cầu (4 quả) 22/08",
+        "amount": 170000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 21250,
+          "Trường + Thủy": 42500,
+          "Tú": 21250,
+          "Kiên": 21250,
+          "Thái": 21250,
+          "Thảo": 21250,
+          "Châu Linh": 21250
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 37595,
+      "Trường + Thủy": -218083,
+      "Băng + Tâm": 0,
+      "Tú": -109042,
+      "Kiên": 289530,
+      "Thái": 0,
+      "Thảo": 0,
+      "Phan": 0,
+      "Châu Linh": 0,
+      "Ngân": 0
+    },
+    "totalDebtSum": 0
+  },
+  {
+    "sheetName": "0808",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Tú",
+      "Kiên",
+      "Thái",
+      "Thảo",
+      "Thanh",
+      "Thanh Tâm",
+      "Thiện",
+      "Quân"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 08/08",
+        "amount": 200000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 22222,
+          "Trường + Thủy": 44444,
+          "Tú": 22222,
+          "Thái": 22222,
+          "Thảo": 22222,
+          "Thanh": 22222,
+          "Thanh Tâm": 22222,
+          "Quân": 22222
+        }
+      },
+      {
+        "title": "Tiền cầu (5 quả) 08/08",
+        "amount": 141667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 15741,
+          "Trường + Thủy": 31481,
+          "Tú": 15741,
+          "Thái": 15741,
+          "Thảo": 15741,
+          "Thanh": 15741,
+          "Thanh Tâm": 15741,
+          "Quân": 15741
+        }
+      },
+      {
+        "title": "Tiền nước Revice (2 chai)",
+        "amount": 30000,
+        "paidBy": "Quân",
+        "shares": {
+          "Toàn": 15000,
+          "Tú": 15000
+        }
+      },
+      {
+        "title": "Tiền ăn chè + nem chua rán",
+        "amount": 300000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 37500,
+          "Trường + Thủy": 75000,
+          "Tú": 37500,
+          "Thái": 37500,
+          "Thảo": 37500,
+          "Thanh": 37500,
+          "Quân": 37500
+        }
+      },
+      {
+        "title": "Tiền nước lọc (2 chai)",
+        "amount": 14000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 7000,
+          "Kiên": 7000
+        }
+      },
+      {
+        "title": "Tiền nước Revice (3 chai)",
+        "amount": 36000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 18000,
+          "Kiên": 18000
+        }
+      },
+      {
+        "title": "Tiền bánh mỳ",
+        "amount": 50000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 25000,
+          "Kiên": 25000
+        }
+      },
+      {
+        "title": "Tiền nước (1 chai)",
+        "amount": 7000,
+        "paidBy": "Thảo",
+        "shares": {
+          "Toàn": 3500,
+          "Kiên": 3500
+        }
+      },
+      {
+        "title": "Tiền hoa cho Diệp + Matcha",
+        "amount": 200000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 33333,
+          "Trường + Thủy": 33333,
+          "Tú": 33333,
+          "Kiên": 33333,
+          "Thiện": 33333,
+          "Quân": 33333
+        }
+      },
+      {
+        "title": "Ăn bún bò huế buổi trưa",
+        "amount": 172000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 43000,
+          "Trường + Thủy": 43000,
+          "Tú": 43000,
+          "Quân": 43000
+        }
+      },
+      {
+        "title": "Tiền đi taxi",
+        "amount": 100000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 33333,
+          "Kiên": 33333,
+          "Thiện": 33333
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 07/08",
+        "amount": 80000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 26667,
+          "Tú": 26667,
+          "Kiên": 26667
+        }
+      },
+      {
+        "title": "Tiền cầu (1 quả) 07/08",
+        "amount": 28333,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 9444,
+          "Tú": 9444,
+          "Kiên": 9444
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 38428,
+      "Trường + Thủy": 0,
+      "Băng + Tâm": 25000,
+      "Tú": 0,
+      "Kiên": 0,
+      "Thái": 0,
+      "Thảo": 0,
+      "Thanh": 0,
+      "Thanh Tâm": -37963,
+      "Thiện": -26667,
+      "Quân": 0
+    },
+    "totalDebtSum": -1202
+  },
+  {
+    "sheetName": "0108",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Kiên",
+      "Thái",
+      "Thảo",
+      "Phan",
+      "Quân"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 01/08",
+        "amount": 270000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 30000,
+          "Trường + Thủy": 60000,
+          "Băng + Tâm": 60000,
+          "Kiên": 30000,
+          "Thái": 30000,
+          "Thảo": 30000,
+          "Phan": 30000
+        }
+      },
+      {
+        "title": "1 can trà đá",
+        "amount": 25000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 2778,
+          "Trường + Thủy": 5556,
+          "Băng + Tâm": 5556,
+          "Kiên": 2778,
+          "Thái": 2778,
+          "Thảo": 2778,
+          "Phan": 2778
+        }
+      },
+      {
+        "title": "1 can trà đá",
+        "amount": 25000,
+        "paidBy": "Phan",
+        "shares": {
+          "Toàn": 2778,
+          "Trường + Thủy": 5556,
+          "Băng + Tâm": 5556,
+          "Kiên": 2778,
+          "Thái": 2778,
+          "Thảo": 2778,
+          "Phan": 2778
+        }
+      },
+      {
+        "title": "Tiền cầu (3 quả) 01/08",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 9444,
+          "Trường + Thủy": 18889,
+          "Băng + Tâm": 18889,
+          "Kiên": 9444,
+          "Thái": 9444,
+          "Thảo": 9444,
+          "Phan": 9444
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 281375,
+      "Trường + Thủy": 20148,
+      "Băng + Tâm": 25000,
+      "Kiên": -387724,
+      "Thái": 0,
+      "Thảo": 0,
+      "Phan": 0,
+      "Quân": 60000
+    },
+    "totalDebtSum": -1201
+  },
+  {
+    "sheetName": "2407",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Băng + Tâm",
+      "Kiên",
+      "Tiến",
+      "Thái",
+      "Thanh",
+      "Thảo",
+      "Quân"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 24/07",
+        "amount": 300000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Trường + Thủy": 66667,
+          "Băng + Tâm": 66667,
+          "Kiên": 33333,
+          "Tiến": 33333,
+          "Thái": 33333,
+          "Thanh": 33333,
+          "Thảo": 33333
+        }
+      },
+      {
+        "title": "Tiền cầu (6 quả) 24/07",
+        "amount": 170000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Trường + Thủy": 37778,
+          "Băng + Tâm": 37778,
+          "Kiên": 18889,
+          "Tiến": 18889,
+          "Thái": 18889,
+          "Thanh": 18889,
+          "Thảo": 18889
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 176375,
+      "Trường + Thủy": 150148,
+      "Băng + Tâm": 0,
+      "Kiên": -387724,
+      "Tiến": 0,
+      "Thái": 0,
+      "Thanh": 0,
+      "Thảo": 0,
+      "Quân": 60000
+    },
+    "totalDebtSum": -1201
+  },
+  {
+    "sheetName": "1807",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Thanh Tâm",
+      "Băng + Tâm",
+      "Kiên",
+      "Tú",
+      "Diệp",
+      "Quân",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 18/07",
+        "amount": 270000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 38571,
+          "Trường + Thủy": 38571,
+          "Thanh Tâm": 38571,
+          "Băng + Tâm": 38571,
+          "Kiên": 38571,
+          "Tú": 38571,
+          "Diệp": 38571
+        }
+      },
+      {
+        "title": "Tiền cầu ( quả) 18/07",
+        "amount": 113333,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 16190,
+          "Trường + Thủy": 16190,
+          "Thanh Tâm": 16190,
+          "Băng + Tâm": 16190,
+          "Kiên": 16190,
+          "Tú": 16190,
+          "Diệp": 16190
+        }
+      },
+      {
+        "title": "Tiền nước Revice (2 chai)",
+        "amount": 18000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 3000,
+          "Trường + Thủy": 3000,
+          "Băng + Tâm": 3000,
+          "Kiên": 3000,
+          "Tú": 3000,
+          "Diệp": 3000
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -58293,
+      "Trường + Thủy": 254592,
+      "Thanh Tâm": 0,
+      "Băng + Tâm": 0,
+      "Kiên": -257502,
+      "Tú": 0,
+      "Diệp": 0,
+      "Quân": 60000,
+      "Tiến": 0
+    },
+    "totalDebtSum": -1203
+  },
+  {
+    "sheetName": "1107",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Thanh Tâm",
+      "Băng + Tâm",
+      "Kiên",
+      "Tú",
+      "Khiêm",
+      "Quân",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 11/07",
+        "amount": 345000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 38333,
+          "Trường + Thủy": 38333,
+          "Thanh Tâm": 38333,
+          "Băng + Tâm": 76667,
+          "Kiên": 38333,
+          "Tú": 38333,
+          "Khiêm": 38333,
+          "Tiến": 38333
+        }
+      },
+      {
+        "title": "Tiền cầu (5 quả) 11/07",
+        "amount": 141667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 15741,
+          "Trường + Thủy": 15741,
+          "Thanh Tâm": 15741,
+          "Băng + Tâm": 31481,
+          "Kiên": 15741,
+          "Tú": 15741,
+          "Khiêm": 15741,
+          "Tiến": 15741
+        }
+      },
+      {
+        "title": "Tiền nước Revice (2 chai)",
+        "amount": 18000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 2571,
+          "Trường + Thủy": 2571,
+          "Băng + Tâm": 2571,
+          "Kiên": 2571,
+          "Tú": 2571,
+          "Khiêm": 2571,
+          "Tiến": 2571
+        }
+      },
+      {
+        "title": "Tiền nước Revice (3 chai)",
+        "amount": 27000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 3857,
+          "Trường + Thủy": 3857,
+          "Băng + Tâm": 3857,
+          "Kiên": 3857,
+          "Tú": 3857,
+          "Khiêm": 3857,
+          "Tiến": 3857
+        }
+      },
+      {
+        "title": "Tiền nước CV Phùng Khoang",
+        "amount": 210000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 35000,
+          "Trường + Thủy": 25000,
+          "Băng + Tâm": 50000,
+          "Kiên": 25000,
+          "Tú": 25000,
+          "Khiêm": 25000,
+          "Tiến": 25000
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -310884,
+      "Trường + Thủy": 312354,
+      "Thanh Tâm": 0,
+      "Băng + Tâm": 0,
+      "Kiên": -27740,
+      "Tú": 0,
+      "Khiêm": 0,
+      "Quân": 60000,
+      "Tiến": -34932
+    },
+    "totalDebtSum": -1202
+  },
+  {
+    "sheetName": "0407",
+    "members": [
+      "Toàn",
+      "Trường",
+      "Thanh Tâm",
+      "Băng + Tâm",
+      "Kiên",
+      "Tú",
+      "Dũng",
+      "Quân",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 04/07",
+        "amount": 255000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 36429,
+          "Thanh Tâm": 36429,
+          "Băng + Tâm": 72857,
+          "Kiên": 36429,
+          "Tú": 36429,
+          "Dũng": 36429
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả) 04/07",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 8095,
+          "Thanh Tâm": 8095,
+          "Băng + Tâm": 16190,
+          "Kiên": 8095,
+          "Tú": 8095,
+          "Dũng": 8095
+        }
+      },
+      {
+        "title": "Tiền nước Revice (4 chai) + đá",
+        "amount": 40000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 8000,
+          "Băng + Tâm": 8000,
+          "Kiên": 8000,
+          "Tú": 8000,
+          "Dũng": 8000
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 01/07",
+        "amount": 120000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 30000,
+          "Trường": 30000,
+          "Kiên": 30000,
+          "Tú": 30000
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả) 01/07",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 14167,
+          "Trường": 14167,
+          "Kiên": 14167,
+          "Tú": 14167
+        }
+      },
+      {
+        "title": "Tiền nước Revice (2 chai)",
+        "amount": 18000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 4500,
+          "Trường": 4500,
+          "Kiên": 4500,
+          "Tú": 4500
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -316190,
+      "Trường": 74940,
+      "Thanh Tâm": 0,
+      "Băng + Tâm": -464,
+      "Kiên": 128846,
+      "Tú": 1096,
+      "Dũng": 0,
+      "Quân": 60000,
+      "Tiến": 50571
+    },
+    "totalDebtSum": -1201
+  },
+  {
+    "sheetName": "2606",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Quân",
+      "Băng + Tâm",
+      "Kiên",
+      "Tú",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 26/06",
+        "amount": 260000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 32500,
+          "Trường + Thủy": 65000,
+          "Quân": 32500,
+          "Băng + Tâm": 65000,
+          "Kiên": 32500,
+          "Tú": 32500,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền cầu (4 quả) 26/06",
+        "amount": 113333,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 14167,
+          "Trường + Thủy": 28333,
+          "Quân": 14167,
+          "Băng + Tâm": 28333,
+          "Kiên": 14167,
+          "Tú": 14167,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice (2 chai)",
+        "amount": 16000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 2000,
+          "Trường + Thủy": 4000,
+          "Quân": 2000,
+          "Băng + Tâm": 4000,
+          "Kiên": 2000,
+          "Tú": 2000,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice (4 chai)",
+        "amount": 36000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 4500,
+          "Trường + Thủy": 9000,
+          "Quân": 4500,
+          "Băng + Tâm": 9000,
+          "Kiên": 4500,
+          "Tú": 4500,
+          "Tiến": 0
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -161285,
+      "Trường + Thủy": 153607,
+      "Quân": 0,
+      "Băng + Tâm": 584,
+      "Kiên": 8036,
+      "Tú": -52714,
+      "Tiến": 50571
+    },
+    "totalDebtSum": -1201
+  },
+  {
+    "sheetName": "1806",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Quân",
+      "Băng",
+      "Kiên",
+      "Bạn Kiên [3]",
+      "Tú",
+      "Tâm",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 18/06",
+        "amount": 180000,
+        "paidBy": "Trường + Thủy",
+        "shares": {
+          "Toàn": 22500,
+          "Trường + Thủy": 45000,
+          "Quân": 22500,
+          "Băng": 22500,
+          "Kiên": 22500,
+          "Bạn Kiên [3]": 0,
+          "Tú": 22500,
+          "Tâm": 22500,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả) 18/06",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 7083,
+          "Trường + Thủy": 14167,
+          "Quân": 7083,
+          "Băng": 7083,
+          "Kiên": 7083,
+          "Bạn Kiên [3]": 0,
+          "Tú": 7083,
+          "Tâm": 7083,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice trắng (2 chai)",
+        "amount": 16000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 2000,
+          "Trường + Thủy": 4000,
+          "Quân": 2000,
+          "Băng": 2000,
+          "Kiên": 2000,
+          "Bạn Kiên [3]": 0,
+          "Tú": 2000,
+          "Tâm": 2000,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice vàng (4 chai) + đá",
+        "amount": 44000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 5500,
+          "Trường + Thủy": 11000,
+          "Quân": 5500,
+          "Băng": 5500,
+          "Kiên": 5500,
+          "Bạn Kiên [3]": 0,
+          "Tú": 5500,
+          "Tâm": 5500,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 17/06",
+        "amount": 142500,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 20357,
+          "Trường + Thủy": 20357,
+          "Quân": 0,
+          "Băng": 0,
+          "Kiên": 20357,
+          "Bạn Kiên [3]": 61071,
+          "Tú": 20357,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Boost + khoáng 17/06",
+        "amount": 98000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 19714,
+          "Trường + Thủy": 19714,
+          "Quân": 0,
+          "Băng": 0,
+          "Kiên": 9714,
+          "Bạn Kiên [3]": 29143,
+          "Tú": 19714,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền cầu (6 quả) 17/06",
+        "amount": 170000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 24286,
+          "Trường + Thủy": 24286,
+          "Quân": 0,
+          "Băng": 0,
+          "Kiên": 24286,
+          "Bạn Kiên [3]": 72857,
+          "Tú": 24286,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice + đá lạnh 13/06",
+        "amount": 64000,
+        "paidBy": "Trường + Thủy",
+        "shares": {
+          "Toàn": 16000,
+          "Trường + Thủy": 16000,
+          "Quân": 16000,
+          "Băng": 0,
+          "Kiên": 16000,
+          "Bạn Kiên [3]": 0,
+          "Tú": 0,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông mưa bão",
+        "amount": 160000,
+        "paidBy": "Trường + Thủy",
+        "shares": {
+          "Toàn": 40000,
+          "Trường + Thủy": 40000,
+          "Quân": 40000,
+          "Băng": 0,
+          "Kiên": 0,
+          "Bạn Kiên [3]": 0,
+          "Tú": 40000,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền cầu (3 quả)",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 21250,
+          "Trường + Thủy": 21250,
+          "Quân": 21250,
+          "Băng": 0,
+          "Kiên": 0,
+          "Bạn Kiên [3]": 0,
+          "Tú": 21250,
+          "Tâm": 0,
+          "Tiến": 0
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -212951,
+      "Trường + Thủy": 259940,
+      "Quân": -145333,
+      "Băng": 917,
+      "Kiên": 45203,
+      "Bạn Kiên [3]": 0,
+      "Tú": 453,
+      "Tâm": 917,
+      "Tiến": 50571
+    },
+    "totalDebtSum": -283
+  },
+  {
+    "sheetName": "0706",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Quân",
+      "Băng",
+      "Kiên",
+      "Tú",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 07/06",
+        "amount": 240000,
+        "paidBy": "Trường + Thủy",
+        "shares": {
+          "Toàn": 34286,
+          "Trường + Thủy": 68571,
+          "Quân": 34286,
+          "Băng": 34286,
+          "Kiên": 34286,
+          "Tú": 34286,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền cầu ( 3 quả) 07/06",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 12143,
+          "Trường + Thủy": 24286,
+          "Quân": 12143,
+          "Băng": 12143,
+          "Kiên": 12143,
+          "Tú": 12143,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền đá lạnh + cốc nhựa",
+        "amount": 20000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 2857,
+          "Trường + Thủy": 5714,
+          "Quân": 2857,
+          "Băng": 2857,
+          "Kiên": 2857,
+          "Tú": 2857
+        }
+      },
+      {
+        "title": "Tiền nước Revice (8 chai)",
+        "amount": 64000,
+        "paidBy": "Kiên",
+        "shares": {
+          "Toàn": 9143,
+          "Trường + Thủy": 18286,
+          "Quân": 9143,
+          "Băng": 9143,
+          "Kiên": 9143,
+          "Tú": 9143
+        }
+      },
+      {
+        "title": "Tiền mua thùng đá giữ nhiệt",
+        "amount": 220000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 31429,
+          "Trường + Thủy": 31429,
+          "Quân": 31429,
+          "Băng": 31429,
+          "Kiên": 31429,
+          "Tú": 31429,
+          "Tiến": 31429
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -46857,
+      "Trường + Thủy": 91714,
+      "Quân": 143,
+      "Băng": 143,
+      "Kiên": -5857,
+      "Tú": -89857,
+      "Tiến": 50571
+    },
+    "totalDebtSum": 0
+  },
+  {
+    "sheetName": "3005",
+    "members": [
+      "Toàn",
+      "Trường",
+      "Quân",
+      "Băng",
+      "Tiến",
+      "Kiên",
+      "Tú"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 30/05",
+        "amount": 240000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 48000,
+          "Trường": 48000,
+          "Quân": 48000,
+          "Băng": 48000,
+          "Tiến": 48000,
+          "Kiên": 0,
+          "Tú": 0
+        }
+      },
+      {
+        "title": "Tiền cầu (3 quả) 30/05",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 17000,
+          "Trường": 17000,
+          "Quân": 17000,
+          "Băng": 17000,
+          "Tiến": 17000,
+          "Kiên": 0,
+          "Tú": 0
+        }
+      },
+      {
+        "title": "Tiền nước Revice ( 2 chai)",
+        "amount": 30000,
+        "paidBy": "Băng",
+        "shares": {
+          "Toàn": 10000,
+          "Trường": 0,
+          "Quân": 10000,
+          "Băng": 10000,
+          "Tiến": 0,
+          "Kiên": 0,
+          "Tú": 0
+        }
+      },
+      {
+        "title": "Ăn lẩu 30/5",
+        "amount": 53000,
+        "paidBy": "Trường",
+        "shares": {
+          "Toàn": 8833,
+          "Trường": 8833,
+          "Quân": 8833,
+          "Băng": 0,
+          "Tiến": 8833,
+          "Kiên": 8833,
+          "Tú": 8833
+        }
+      },
+      {
+        "title": "Ăn lẩu 30/5",
+        "amount": 187000,
+        "paidBy": "Tiến",
+        "shares": {
+          "Toàn": 31167,
+          "Trường": 31167,
+          "Quân": 31167,
+          "Băng": 0,
+          "Tiến": 31167,
+          "Kiên": 31167,
+          "Tú": 31167
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 0,
+      "Trường": 0,
+      "Quân": 0,
+      "Băng": 0,
+      "Tiến": 0,
+      "Kiên": 0,
+      "Tú": 0
+    },
+    "totalDebtSum": 0
+  },
+  {
+    "sheetName": "2405",
+    "members": [
+      "Toàn",
+      "Trường + Thủy",
+      "Tú",
+      "Kiên",
+      "Băng",
+      "Quân",
+      "Tiến + Hòa"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông 24/05",
+        "amount": 80000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 11429,
+          "Trường + Thủy": 0,
+          "Tú": 11429,
+          "Kiên": 11429,
+          "Băng": 11429,
+          "Quân": 11429,
+          "Tiến + Hòa": 22857
+        }
+      },
+      {
+        "title": "1h sau",
+        "amount": 80000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 8889,
+          "Trường + Thủy": 17778,
+          "Tú": 8889,
+          "Kiên": 8889,
+          "Băng": 8889,
+          "Quân": 8889,
+          "Tiến + Hòa": 17778
+        }
+      },
+      {
+        "title": "Tiền cầu ( 3 quả) 24/05",
+        "amount": 85000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 9444,
+          "Trường + Thủy": 18889,
+          "Tú": 9444,
+          "Kiên": 9444,
+          "Băng": 9444,
+          "Quân": 9444,
+          "Tiến + Hòa": 18889
+        }
+      },
+      {
+        "title": "Tiền nước Revice (5 chai)",
+        "amount": 75000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 10714,
+          "Trường + Thủy": 0,
+          "Tú": 10714,
+          "Kiên": 10714,
+          "Băng": 10714,
+          "Quân": 10714,
+          "Tiến + Hòa": 21429
+        }
+      },
+      {
+        "title": "Tiền ăn uống 24/05",
+        "amount": 419000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 47000,
+          "Trường + Thủy": 90000,
+          "Tú": 47000,
+          "Kiên": 48000,
+          "Băng": 35000,
+          "Quân": 47000,
+          "Tiến + Hòa": 105000
+        }
+      },
+      {
+        "title": "Tiền ăn chè 23/05",
+        "amount": 100000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 25000,
+          "Trường + Thủy": 0,
+          "Tú": 25000,
+          "Kiên": 25000,
+          "Băng": 0,
+          "Quân": 25000,
+          "Tiến + Hòa": 0
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": 857,
+      "Trường + Thủy": 0,
+      "Tú": 524,
+      "Kiên": -476,
+      "Băng": -476,
+      "Quân": 524,
+      "Tiến + Hòa": -952
+    },
+    "totalDebtSum": 1
+  },
+  {
+    "sheetName": "1705",
+    "members": [
+      "Toàn",
+      "Trường",
+      "Tú",
+      "Kiên",
+      "Băng",
+      "Thủy",
+      "Diệp",
+      "Quân",
+      "Tiến"
+    ],
+    "expenses": [
+      {
+        "title": "Tổng tiền thanh toán",
+        "amount": 9,
+        "paidBy": "Cầu lông 17/05",
+        "shares": {
+          "Toàn": 307561,
+          "Trường": -93024,
+          "Tú": 122976,
+          "Kiên": -209024,
+          "Băng": 277593,
+          "Thủy": -39407,
+          "Diệp": -39407,
+          "Quân": -148024,
+          "Tiến": -179241
+        }
+      },
+      {
+        "title": "Tiền sân cầu lông 17/05",
+        "amount": 250000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 27778,
+          "Trường": 27778,
+          "Tú": 27778,
+          "Kiên": 27778,
+          "Băng": 27778,
+          "Thủy": 27778,
+          "Diệp": 27778,
+          "Quân": 27778,
+          "Tiến": 27778
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả) 17/05",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 6296,
+          "Trường": 6296,
+          "Tú": 6296,
+          "Kiên": 6296,
+          "Băng": 6296,
+          "Thủy": 6296,
+          "Diệp": 6296,
+          "Quân": 6296,
+          "Tiến": 6296
+        }
+      },
+      {
+        "title": "Tiền nước Revice 17/05",
+        "amount": 48000,
+        "paidBy": "Tú",
+        "shares": {
+          "Toàn": 5333,
+          "Trường": 5333,
+          "Tú": 5333,
+          "Kiên": 5333,
+          "Băng": 5333,
+          "Thủy": 5333,
+          "Diệp": 5333,
+          "Quân": 5333,
+          "Tiến": 5333
+        }
+      },
+      {
+        "title": "Tiền ăn lẩu 16/05",
+        "amount": 158918,
+        "paidBy": "Toàn",
+        "shares": {
+          "Toàn": 31784,
+          "Trường": 31784,
+          "Tú": 31784,
+          "Kiên": 31784,
+          "Băng": 0,
+          "Thủy": 0,
+          "Diệp": 0,
+          "Quân": 31784,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền ăn lẩu 16/05 (rau)",
+        "amount": 15000,
+        "paidBy": "Trường",
+        "shares": {
+          "Toàn": 3000,
+          "Trường": 3000,
+          "Tú": 3000,
+          "Kiên": 3000,
+          "Băng": 0,
+          "Thủy": 0,
+          "Diệp": 0,
+          "Quân": 3000,
+          "Tiến": 0
+        }
+      },
+      {
+        "title": "Tiền ăn lẩu 15/05",
+        "amount": 183000,
+        "paidBy": "Tú",
+        "shares": {
+          "Toàn": 30500,
+          "Trường": 30500,
+          "Tú": 30500,
+          "Kiên": 30500,
+          "Băng": 0,
+          "Thủy": 0,
+          "Diệp": 0,
+          "Quân": 30500,
+          "Tiến": 30500
+        }
+      },
+      {
+        "title": "Tiền đá lạnh 15/05",
+        "amount": 20000,
+        "paidBy": "Quân",
+        "shares": {
+          "Toàn": 3333,
+          "Trường": 3333,
+          "Tú": 3333,
+          "Kiên": 3333,
+          "Băng": 0,
+          "Thủy": 0,
+          "Diệp": 0,
+          "Quân": 3333,
+          "Tiến": 3333
+        }
+      },
+      {
+        "title": "Tiền ăn mỳ chua cay 17/05",
+        "amount": 260000,
+        "paidBy": "Tiến",
+        "shares": {
+          "Toàn": 50000,
+          "Trường": 0,
+          "Tú": 0,
+          "Kiên": 50000,
+          "Băng": 0,
+          "Thủy": 0,
+          "Diệp": 0,
+          "Quân": 60000,
+          "Tiến": 100000
+        }
+      }
+    ],
+    "debtBalances": {
+      "Toàn": -2301,
+      "Trường": 0,
+      "Tú": 0,
+      "Kiên": -24,
+      "Băng": 0,
+      "Thủy": 0,
+      "Diệp": 593,
+      "Quân": 976,
+      "Tiến": 759
+    },
+    "totalDebtSum": 3
+  },
+  {
+    "sheetName": "105",
+    "members": [
+      "Chuyển tiền",
+      "Nhận tiền",
+      "Chuyển tiền",
+      "Chuyển tiền",
+      "Nhận tiền"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông",
+        "amount": 200000,
+        "paidBy": "Tú",
+        "shares": {
+          "Chuyển tiền": 40000,
+          "Nhận tiền": 40000
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả)",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Chuyển tiền": 11333,
+          "Nhận tiền": 11333
+        }
+      },
+      {
+        "title": "Tiền cầu",
+        "amount": 171000,
+        "paidBy": "Băng",
+        "shares": {
+          "Chuyển tiền": 33000,
+          "Nhận tiền": 33000
+        }
+      }
+    ],
+    "debtBalances": {
+      "Chuyển tiền": -84333,
+      "Nhận tiền": 86667
+    },
+    "totalDebtSum": -197999
+  },
+  {
+    "sheetName": "25",
+    "members": [
+      "Nhận tiền",
+      "Nhận tiền",
+      "Chuyển tiền",
+      "Chuyển tiền"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông",
+        "amount": 160000,
+        "paidBy": "Tú",
+        "shares": {
+          "Nhận tiền": 40000,
+          "Chuyển tiền": 40000
+        }
+      },
+      {
+        "title": "Tiền cầu (2 quả)",
+        "amount": 56667,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 14167,
+          "Chuyển tiền": 14167
+        }
+      },
+      {
+        "title": "Tiền nước Revice",
+        "amount": 45000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 15000,
+          "Chuyển tiền": 0
+        }
+      },
+      {
+        "title": "Tiền ăn sáng + cafe",
+        "amount": 160000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 80000,
+          "Chuyển tiền": 0
+        }
+      }
+    ],
+    "debtBalances": {
+      "Nhận tiền": 70666,
+      "Chuyển tiền": -54167
+    },
+    "totalDebtSum": -2
+  },
+  {
+    "sheetName": "274",
+    "members": [
+      "Nhận tiền",
+      "Chuyển tiền",
+      "Chuyển tiền"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông",
+        "amount": 136500,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 45500,
+          "Chuyển tiền": 45500
+        }
+      },
+      {
+        "title": "Tiền nước",
+        "amount": 45000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 15000,
+          "Chuyển tiền": 15000
+        }
+      },
+      {
+        "title": "Xiên nướng + trà đá",
+        "amount": 143000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 47667,
+          "Chuyển tiền": 47667
+        }
+      }
+    ],
+    "debtBalances": {
+      "Nhận tiền": 216333,
+      "Chuyển tiền": -108167
+    },
+    "totalDebtSum": -1
+  },
+  {
+    "sheetName": "254",
+    "members": [
+      "Nhận tiền",
+      "Chuyển tiền",
+      "Chuyển tiền",
+      "Chuyển tiền",
+      "Nhận tiền",
+      "Chuyển tiền",
+      "Chuyển tiền",
+      "Chuyển tiền"
+    ],
+    "expenses": [
+      {
+        "title": "Tiền sân cầu lông",
+        "amount": 240000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 30000,
+          "Chuyển tiền": 30000
+        }
+      },
+      {
+        "title": "Tiền cầu (4 quả)",
+        "amount": 113333,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 14167,
+          "Chuyển tiền": 14167
+        }
+      },
+      {
+        "title": "Tiền ăn ramen",
+        "amount": 310500,
+        "paidBy": "Trường",
+        "shares": {
+          "Nhận tiền": 51750,
+          "Chuyển tiền": 0
+        }
+      },
+      {
+        "title": "Tiền nước HVQ",
+        "amount": 170000,
+        "paidBy": "Toàn",
+        "shares": {
+          "Nhận tiền": 28333,
+          "Chuyển tiền": 0
+        }
+      }
+    ],
+    "debtBalances": {
+      "Nhận tiền": 354185,
+      "Chuyển tiền": -44167
+    },
+    "totalDebtSum": -1
+  }
+]
