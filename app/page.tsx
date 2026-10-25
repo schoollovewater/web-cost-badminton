@@ -1,388 +1,1669 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useStore } from '@/lib/useStore';
 import { formatVND, formatDate } from '@/lib/engine/format';
+import { calculateShuttleAmount } from '@/lib/engine/shuttle';
+import { calculateWeightedSplit } from '@/lib/engine/split';
+import { calculateSettlement } from '@/lib/engine/settle';
+import { Member } from '@/lib/store';
 import {
-  TrendingDown,
-  TrendingUp,
-  CheckCircle2,
+  GOOGLE_APPS_SCRIPT_TEMPLATE,
+  syncSessionToGoogleSheet,
+} from '@/lib/googleSheet';
+import {
   Plus,
-  ArrowRightLeft,
+  Trash2,
+  Copy,
+  Check,
+  QrCode,
+  Share2,
+  FileSpreadsheet,
+  Settings,
+  Sparkles,
+  ExternalLink,
+  Users,
   Calendar,
+  CreditCard,
+  Eye,
+  X,
+  History,
+  CheckCircle2,
   AlertCircle,
-  Clock,
-  ChevronRight,
-  ShieldCheck,
+  HelpCircle,
 } from 'lucide-react';
 
-export default function DashboardPage() {
-  const {
-    currentMember,
-    members,
-    sessions,
-    expenses,
-    transfers,
-    balances,
-    state,
-    confirmTransfer,
-    rejectTransfer,
-  } = useStore();
+interface OtherExpense {
+  id: string;
+  title: string;
+  amount: number;
+  paidBy: string;
+}
 
-  const myBalance = balances[currentMember?.id]?.balance || 0;
-  const isDone = Math.abs(myBalance) < state.settings.doneTolerance;
-  const isCreditor = myBalance >= state.settings.doneTolerance;
-  const isDebtor = myBalance <= -state.settings.doneTolerance;
+export default function BadmintonCalculatorPage() {
+  const { members, state, createSession } = useStore();
 
-  // Pending transfers where current member is the receiver (to confirm)
-  const incomingPending = transfers.filter(
-    (t) => t.toMemberId === currentMember?.id && t.status === 'pending'
+  // Local state for Google Sheet Webhook URL
+  const [webhookUrl, setWebhookUrl] = useState<string>('');
+  const [showSheetSettings, setShowSheetSettings] = useState<boolean>(false);
+  const [scriptCopied, setScriptCopied] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<{
+    loading: boolean;
+    success?: boolean;
+    message?: string;
+  }>({ loading: false });
+
+  // Load webhook URL from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('badminton_sheet_webhook_url');
+    if (saved) {
+      setWebhookUrl(saved);
+    }
+  }, []);
+
+  const handleSaveWebhook = (url: string) => {
+    setWebhookUrl(url);
+    localStorage.setItem('badminton_sheet_webhook_url', url.trim());
+  };
+
+  // --- 1. SESSION INPUTS (BÊN TRÁI) ---
+  const [date, setDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
+  const [title, setTitle] = useState<string>('');
+
+  // Participants: memberId -> weight (0 = not attending)
+  const [selectedWeights, setSelectedWeights] = useState<Record<string, number>>(
+    () => {
+      const init: Record<string, number> = {};
+      for (const m of members) {
+        if (m.isActive) {
+          init[m.id] = m.defaultWeight;
+        }
+      }
+      return init;
+    }
   );
 
-  // Pending transfers sent by current member
-  const outgoingPending = transfers.filter(
-    (t) => t.fromMemberId === currentMember?.id && t.status === 'pending'
+  // Custom guests / additional participants
+  const [customGuests, setCustomGuests] = useState<
+    { id: string; name: string; weight: number }[]
+  >([]);
+  const [newGuestName, setNewGuestName] = useState<string>('');
+
+  // Expenses
+  const defaultPayer = members[0]?.id || 'toan';
+  const [courtAmount, setCourtAmount] = useState<number>(240000);
+  const [courtPaidBy, setCourtPaidBy] = useState<string>(defaultPayer);
+
+  const [shuttleInputMode, setShuttleInputMode] = useState<'qty' | 'amount'>('qty');
+  const [shuttleQty, setShuttleQty] = useState<number>(4);
+  const [customTubePrice, setCustomTubePrice] = useState<number>(
+    state.settings.tubePrice || 340000
   );
+  const [directShuttleAmount, setDirectShuttleAmount] = useState<number>(113333);
+  const [shuttlePaidBy, setShuttlePaidBy] = useState<string>(defaultPayer);
 
-  // Invariant check: total group sum
-  const groupSum = Object.values(balances).reduce((s, b) => s + b.balance, 0);
+  const [otherCosts, setOtherCosts] = useState<OtherExpense[]>([]);
 
-  // Sorted members by balance ascending (debtors first, creditors last)
-  const sortedMembers = [...members].sort((a, b) => {
-    const balA = balances[a.id]?.balance || 0;
-    const balB = balances[b.id]?.balance || 0;
-    return balA - balB;
-  });
+  // Modals & Feedback
+  const [copiedZalo, setCopiedZalo] = useState(false);
+  const [zoomedQr, setZoomedQr] = useState<{
+    receiverName: string;
+    bankName: string;
+    accountNo: string;
+    amount: number;
+    qrUrl: string;
+  } | null>(null);
+
+  // --- 2. TÍNH TOÁN REALTIME ---
+  // A. All active participants (including guests)
+  const allParticipants = useMemo(() => {
+    const list: { id: string; name: string; weight: number }[] = [];
+    for (const m of members) {
+      const w = selectedWeights[m.id] || 0;
+      if (w > 0) {
+        list.push({ id: m.id, name: m.displayName, weight: w });
+      }
+    }
+    for (const g of customGuests) {
+      if (g.weight > 0) {
+        list.push({ id: g.id, name: g.name, weight: g.weight });
+      }
+    }
+    return list;
+  }, [members, selectedWeights, customGuests]);
+
+  const totalShares = useMemo(() => {
+    return allParticipants.reduce((sum, p) => sum + p.weight, 0);
+  }, [allParticipants]);
+
+  // B. Calculated Shuttle Cost
+  const calculatedShuttleAmount = useMemo(() => {
+    if (shuttleInputMode === 'amount') return directShuttleAmount;
+    return calculateShuttleAmount(
+      shuttleQty,
+      customTubePrice,
+      state.settings.shuttlesPerTube || 12
+    );
+  }, [
+    shuttleInputMode,
+    directShuttleAmount,
+    shuttleQty,
+    customTubePrice,
+    state.settings.shuttlesPerTube,
+  ]);
+
+  // C. Total Costs
+  const totalOtherAmount = useMemo(() => {
+    return otherCosts.reduce((s, c) => s + (c.amount || 0), 0);
+  }, [otherCosts]);
+
+  const grandTotal = courtAmount + calculatedShuttleAmount + totalOtherAmount;
+  const costPerShare = totalShares > 0 ? Math.round(grandTotal / totalShares) : 0;
+
+  // D. Weighted Split Calculation (Largest Remainder)
+  const participantSplitMap = useMemo(() => {
+    if (allParticipants.length === 0 || grandTotal <= 0) return {};
+    const splitInput = allParticipants.map((p) => ({
+      memberId: p.id,
+      weight: p.weight,
+    }));
+    const shares = calculateWeightedSplit(grandTotal, splitInput);
+    const map: Record<string, number> = {};
+    for (const s of shares) {
+      map[s.memberId] = s.amount;
+    }
+    return map;
+  }, [allParticipants, grandTotal]);
+
+  // E. Net Balances for THIS SESSION: (Paid - Share)
+  const sessionBalances = useMemo(() => {
+    const map: Record<
+      string,
+      { name: string; weight: number; paid: number; share: number; net: number }
+    > = {};
+
+    for (const p of allParticipants) {
+      map[p.id] = {
+        name: p.name,
+        weight: p.weight,
+        paid: 0,
+        share: participantSplitMap[p.id] || 0,
+        net: 0,
+      };
+    }
+
+    // Add court cost payer
+    if (courtAmount > 0 && map[courtPaidBy]) {
+      map[courtPaidBy].paid += courtAmount;
+    }
+    // Add shuttle cost payer
+    if (calculatedShuttleAmount > 0 && map[shuttlePaidBy]) {
+      map[shuttlePaidBy].paid += calculatedShuttleAmount;
+    }
+    // Add other expenses payers
+    for (const oc of otherCosts) {
+      if (oc.amount > 0 && map[oc.paidBy]) {
+        map[oc.paidBy].paid += oc.amount;
+      }
+    }
+
+    // Compute net
+    for (const id of Object.keys(map)) {
+      map[id].net = map[id].paid - map[id].share;
+    }
+
+    return map;
+  }, [
+    allParticipants,
+    participantSplitMap,
+    courtAmount,
+    courtPaidBy,
+    calculatedShuttleAmount,
+    shuttlePaidBy,
+    otherCosts,
+  ]);
+
+  // F. Simplified Settle: Who pays whom
+  const transfers = useMemo(() => {
+    const balanceRecord: Record<string, number> = {};
+    for (const [id, data] of Object.entries(sessionBalances)) {
+      balanceRecord[id] = data.net;
+    }
+    return calculateSettlement(balanceRecord, {
+      mode: 'min_transactions',
+      doneTolerance: 500,
+    });
+  }, [sessionBalances]);
+
+  // --- ACTIONS ---
+  const toggleMember = (id: string, defaultWeight: number) => {
+    setSelectedWeights((prev) => ({
+      ...prev,
+      [id]: (prev[id] || 0) > 0 ? 0 : defaultWeight,
+    }));
+  };
+
+  const adjustWeight = (id: string, delta: number) => {
+    setSelectedWeights((prev) => {
+      const cur = prev[id] || 1;
+      const next = Math.max(1, cur + delta);
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const addGuest = () => {
+    if (!newGuestName.trim()) return;
+    const guestId = 'guest_' + Date.now();
+    setCustomGuests((prev) => [
+      ...prev,
+      { id: guestId, name: newGuestName.trim(), weight: 1 },
+    ]);
+    setNewGuestName('');
+  };
+
+  const removeGuest = (guestId: string) => {
+    setCustomGuests((prev) => prev.filter((g) => g.id !== guestId));
+  };
+
+  const addOtherCost = (presetTitle?: string, presetAmount?: number) => {
+    setOtherCosts((prev) => [
+      ...prev,
+      {
+        id: 'other_' + Date.now(),
+        title: presetTitle || 'Nước uống',
+        amount: presetAmount || 40000,
+        paidBy: defaultPayer,
+      },
+    ]);
+  };
+
+  const removeOtherCost = (id: string) => {
+    setOtherCosts((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // VietQR URL builder helper
+  const getVietQrUrl = (
+    receiverMember: Member | undefined,
+    amount: number,
+    note: string
+  ) => {
+    if (!receiverMember) return '';
+    if (receiverMember.qrImageData) return receiverMember.qrImageData;
+
+    const bankCodeMap: Record<string, string> = {
+      'Techcombank': 'TCB',
+      'MB Bank': 'MB',
+      'Vietcombank': 'VCB',
+      'VPBank': 'VPB',
+      'TPBank': 'TPB',
+      'VietinBank': 'ICB',
+      'BIDV': 'BIDV',
+      'ACB': 'ACB',
+    };
+    const bankCode = bankCodeMap[receiverMember.bankName || ''] || 'MB';
+    const accNo = receiverMember.bankAccountNo || '0987654321';
+    const accName = encodeURIComponent(
+      receiverMember.bankAccountHolder || receiverMember.displayName
+    );
+    const encodedNote = encodeURIComponent(note);
+    return `https://img.vietqr.io/image/${bankCode}-${accNo}-compact2.png?amount=${amount}&addInfo=${encodedNote}&accountName=${accName}`;
+  };
+
+  // 1-Click Copy Zalo Message
+  const handleCopyZalo = () => {
+    const dateFormatted = new Date(date).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    let msg = `🏸 TỔNG KẾT TIỀN CẦU LÔNG — ${dateFormatted}`;
+    if (title.trim()) msg += ` (${title.trim()})`;
+    msg += `\n─────────────────────\n`;
+    msg += `💰 Tổng chi: ${formatVND(grandTotal)} (${totalShares} suất)\n`;
+    msg += `🎯 Mỗi suất: ${formatVND(costPerShare)} / suất\n\n`;
+
+    msg += `📌 Chi tiết khoản chi:\n`;
+    const courtPayer = members.find((m) => m.id === courtPaidBy)?.displayName || 'Toàn';
+    msg += `• Sân: ${formatVND(courtAmount)} (${courtPayer} trả)\n`;
+
+    const shuttlePayer = members.find((m) => m.id === shuttlePaidBy)?.displayName || 'Toàn';
+    if (shuttleInputMode === 'qty') {
+      msg += `• Cầu: ${formatVND(calculatedShuttleAmount)} (${shuttleQty} quả - ${shuttlePayer} trả)\n`;
+    } else {
+      msg += `• Cầu: ${formatVND(calculatedShuttleAmount)} (${shuttlePayer} trả)\n`;
+    }
+
+    for (const oc of otherCosts) {
+      if (oc.amount > 0) {
+        const payer = members.find((m) => m.id === oc.paidBy)?.displayName || 'Thành viên';
+        msg += `• ${oc.title}: ${formatVND(oc.amount)} (${payer} trả)\n`;
+      }
+    }
+
+    msg += `\n💸 AI CHUYỂN CHO AI:\n`;
+    if (transfers.length === 0) {
+      msg += `✅ Mọi người đã hòa tiền, không cần chuyển khoản!\n`;
+    } else {
+      transfers.forEach((t, idx) => {
+        const fromName =
+          allParticipants.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
+        const toMember = members.find((m) => m.id === t.toMemberId);
+        const toName = toMember?.displayName || 'Thành viên';
+        const bankInfo = toMember?.bankAccountNo
+          ? ` (${toMember.bankName || 'Ngân hàng'} - STK: ${toMember.bankAccountNo})`
+          : '';
+        msg += `${idx + 1}. ${fromName} ➜ ${toName}: ${formatVND(t.amount)}${bankInfo}\n`;
+      });
+    }
+
+    msg += `\n✨ Mọi người chuyển khoản sớm giúp nhóm nhé!`;
+
+    navigator.clipboard.writeText(msg);
+    setCopiedZalo(true);
+    setTimeout(() => setCopiedZalo(false), 2500);
+  };
+
+  // Sync to Google Sheet (Liên kết kiểu 1)
+  const handleSyncToGoogleSheet = async () => {
+    if (!webhookUrl || !webhookUrl.startsWith('http')) {
+      setShowSheetSettings(true);
+      return;
+    }
+
+    setSyncStatus({ loading: true });
+
+    // Save session locally as well
+    try {
+      createSession({
+        date,
+        title: title.trim() || undefined,
+        participants: allParticipants.map((p) => ({
+          memberId: p.id,
+          weight: p.weight,
+        })),
+        courtCost: courtAmount > 0 ? { amount: courtAmount, paidBy: courtPaidBy } : undefined,
+        shuttleCost:
+          calculatedShuttleAmount > 0
+            ? {
+                qty: shuttleQty,
+                paidBy: shuttlePaidBy,
+                tubePrice: customTubePrice,
+              }
+            : undefined,
+        otherCosts: otherCosts
+          .filter((c) => c.amount > 0)
+          .map((c) => ({
+            title: c.title,
+            amount: c.amount,
+            paidBy: c.paidBy,
+            category: 'drink' as const,
+          })),
+      });
+
+      // Prepare Google Sheet Payload
+      const dateObj = new Date(date);
+      const day = ('0' + dateObj.getDate()).slice(-2);
+      const month = ('0' + (dateObj.getMonth() + 1)).slice(-2);
+      const tabName = `${day}${month}`;
+
+      const expenseList = [
+        {
+          title: 'Tiền sân',
+          amount: courtAmount,
+          paidBy: members.find((m) => m.id === courtPaidBy)?.displayName || 'Toàn',
+        },
+        {
+          title:
+            shuttleInputMode === 'qty'
+              ? `Tiền cầu (${shuttleQty} quả)`
+              : 'Tiền cầu',
+          amount: calculatedShuttleAmount,
+          paidBy: members.find((m) => m.id === shuttlePaidBy)?.displayName || 'Toàn',
+        },
+        ...otherCosts.map((oc) => ({
+          title: oc.title,
+          amount: oc.amount,
+          paidBy: members.find((m) => m.id === oc.paidBy)?.displayName || 'Thành viên',
+        })),
+      ].filter((e) => e.amount > 0);
+
+      const memberList = Object.values(sessionBalances).map((b) => ({
+        name: b.name,
+        weight: b.weight,
+        paid: b.paid,
+        share: b.share,
+        net: b.net,
+      }));
+
+      const transferList = transfers.map((t) => {
+        const fromName =
+          allParticipants.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
+        const toName =
+          allParticipants.find((p) => p.id === t.toMemberId)?.name || 'Thành viên';
+        return {
+          from: fromName,
+          to: toName,
+          amount: t.amount,
+          note: `${fromName} chuyen tien cau ${day}/${month}`,
+        };
+      });
+
+      const result = await syncSessionToGoogleSheet(webhookUrl, {
+        date,
+        sheetName: tabName,
+        title: title.trim() || undefined,
+        totalCost: grandTotal,
+        totalShares,
+        costPerShare,
+        expenses: expenseList,
+        members: memberList,
+        transfers: transferList,
+      });
+
+      setSyncStatus({
+        loading: false,
+        success: true,
+        message: `Đã lưu & tạo tab "${tabName}" trên Google Sheet thành công!`,
+      });
+      setTimeout(() => {
+        setSyncStatus((s) => ({ ...s, success: false }));
+      }, 5000);
+    } catch (err: any) {
+      setSyncStatus({
+        loading: false,
+        success: false,
+        message: err.message || 'Lỗi khi đồng bộ Google Sheet',
+      });
+    }
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* 1. HERO BALANCE CARD */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* HEADER BAR */}
       <div
-        className="glass-card"
         style={{
-          background: isCreditor
-            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(17, 24, 39, 0.85) 100%)'
-            : isDebtor
-            ? 'linear-gradient(135deg, rgba(244, 63, 94, 0.18) 0%, rgba(17, 24, 39, 0.85) 100%)'
-            : 'linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(17, 24, 39, 0.85) 100%)',
-          borderColor: isCreditor
-            ? 'rgba(16, 185, 129, 0.35)'
-            : isDebtor
-            ? 'rgba(244, 63, 94, 0.35)'
-            : 'rgba(56, 189, 248, 0.35)',
-          padding: '24px 20px',
-          position: 'relative',
-          overflow: 'hidden',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          borderBottom: '1px solid var(--border-subtle)',
+          paddingBottom: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            Số dư hiện tại của bạn
-          </span>
-          <div
-            className={`badge ${
-              isCreditor ? 'badge-credit' : isDebtor ? 'badge-debt' : 'badge-done'
-            }`}
-          >
-            {isCreditor ? (
-              <>
-                <TrendingUp size={12} /> Được nhận
-              </>
-            ) : isDebtor ? (
-              <>
-                <TrendingDown size={12} /> Cần chuyển
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={12} /> Đã cân bằng
-              </>
-            )}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '24px' }}>🏸</span>
+            <h1 style={{ fontSize: '22px', fontWeight: 800 }}>Tính Tiền Buổi Cầu Lông</h1>
           </div>
-        </div>
-
-        <div style={{ margin: '8px 0 16px' }}>
-          <div
-            style={{
-              fontSize: '32px',
-              fontWeight: 800,
-              letterSpacing: '-1px',
-              color: isCreditor
-                ? 'var(--color-credit)'
-                : isDebtor
-                ? 'var(--color-debt)'
-                : 'var(--color-done)',
-            }}
-          >
-            {formatVND(myBalance, true)}
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {isCreditor
-              ? 'Mọi người sẽ chuyển khoản cho bạn theo gợi ý thanh toán.'
-              : isDebtor
-              ? 'Hãy mở mục Thanh toán để quét mã QR và trả tiền.'
-              : 'Tuyệt vời! Bạn không còn dư nợ nào trong nhóm.'}
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '4px' }}>
+            Điền chi phí bên trái ➜ Kết quả chia tiền & Mã QR tự động tính ngay bên phải
           </p>
         </div>
 
-        {/* Quick action buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <Link href="/settle" className="btn btn-primary" style={{ padding: '10px 14px' }}>
-            <ArrowRightLeft size={16} />
-            {isDebtor ? 'Chuyển tiền ngay' : 'Xem thanh toán'}
-          </Link>
-          <Link href="/sessions/new" className="btn btn-secondary" style={{ padding: '10px 14px' }}>
-            <Plus size={16} />
-            + Buổi cầu
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setShowSheetSettings(true)}
+            className="btn btn-secondary btn-sm"
+            style={{
+              borderColor: webhookUrl ? 'rgba(16, 185, 129, 0.4)' : undefined,
+              color: webhookUrl ? 'var(--accent-mint)' : undefined,
+            }}
+          >
+            <FileSpreadsheet size={15} />
+            {webhookUrl ? 'Google Sheet: Đã kết nối' : 'Kết nối Google Sheet'}
+          </button>
+
+          <Link href="/sessions" className="btn btn-secondary btn-sm">
+            <History size={15} /> Lịch sử
           </Link>
         </div>
       </div>
 
-      {/* 2. PENDING INCOMING TRANSFERS BOX */}
-      {incomingPending.length > 0 && (
+      {/* SYNC NOTIFICATION BANNER */}
+      {syncStatus.message && (
         <div
-          className="glass-card animate-fade-in"
           style={{
-            borderColor: 'rgba(245, 158, 11, 0.4)',
-            background: 'rgba(245, 158, 11, 0.08)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            background: syncStatus.success
+              ? 'rgba(16, 185, 129, 0.15)'
+              : 'rgba(244, 63, 94, 0.15)',
+            border: `1px solid ${
+              syncStatus.success ? 'var(--color-credit)' : 'var(--color-debt)'
+            }`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: syncStatus.success ? 'var(--accent-mint-light)' : '#fda4af',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <Clock size={18} color="#f59e0b" />
-            <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#f59e0b' }}>
-              Bạn có {incomingPending.length} khoản chờ xác nhận nhận tiền:
-            </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {syncStatus.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            <span>{syncStatus.message}</span>
+          </div>
+          <button
+            onClick={() => setSyncStatus({ loading: false })}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* MAIN 2-COLUMN SPLIT GRID */}
+      <div className="split-grid">
+        {/* ========================================================
+            CỘT TRÁI: ĐIỀN THÔNG TIN BUỔI CẦU
+        ======================================================== */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Card 1: Ngày & Tên buổi */}
+          <div className="glass-card" style={{ padding: '18px' }}>
+            <h3
+              style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--accent-mint-light)',
+              }}
+            >
+              <Calendar size={17} /> 1. Thời gian & Địa điểm
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label className="input-label">Ngày đánh</label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Tên / Ghi chú (tùy chọn)</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Ví dụ: Sân Thăng Long..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {incomingPending.map((t) => {
-              const sender = members.find((m) => m.id === t.fromMemberId);
-              return (
-                <div
-                  key={t.id}
-                  style={{
-                    background: 'var(--bg-input)',
-                    padding: '12px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                        {sender?.displayName || 'Thành viên'} ➜ Bạn
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-credit)', marginTop: '2px' }}>
-                        {formatVND(t.amount)}
-                      </div>
-                      {t.note && (
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          Lời nhắn: {t.note}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+          {/* Card 2: Ai đi đánh cầu? (Danh sách & Số suất) */}
+          <div className="glass-card" style={{ padding: '18px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'var(--accent-mint-light)',
+                }}
+              >
+                <Users size={17} /> 2. Người tham gia ({allParticipants.length} người /{' '}
+                {totalShares} suất)
+              </h3>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Bấm để tick chọn đi / nghỉ
+              </span>
+            </div>
 
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      style={{ flex: 1 }}
-                      onClick={() => confirmTransfer(t.id)}
-                    >
-                      <CheckCircle2 size={14} /> Đã nhận được
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => {
-                        const reason = prompt('Lý do chưa nhận được:', 'Chưa thấy tiền vào tài khoản');
-                        if (reason) rejectTransfer(t.id, reason);
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: '10px',
+              }}
+            >
+              {members.map((m) => {
+                const currentWeight = selectedWeights[m.id] || 0;
+                const isSelected = currentWeight > 0;
+
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      borderRadius: 'var(--radius-md)',
+                      padding: '10px',
+                      border: `1.5px solid ${
+                        isSelected ? 'var(--accent-mint)' : 'var(--border-subtle)'
+                      }`,
+                      background: isSelected
+                        ? 'rgba(16, 185, 129, 0.08)'
+                        : 'var(--bg-input)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div
+                      onClick={() => toggleMember(m.id, m.defaultWeight)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
                       }}
                     >
-                      Chưa nhận
+                      <div
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '4px',
+                          border: `1.5px solid ${
+                            isSelected ? 'var(--accent-mint)' : 'var(--text-muted)'
+                          }`,
+                          background: isSelected ? 'var(--accent-mint)' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          fontSize: '11px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isSelected && <Check size={13} strokeWidth={3} />}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        }}
+                      >
+                        {m.displayName}
+                      </span>
+                    </div>
+
+                    {/* Weight adjustments when selected */}
+                    {isSelected && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                          paddingTop: '6px',
+                          fontSize: '11px',
+                        }}
+                      >
+                        <span style={{ color: 'var(--text-muted)' }}>Suất:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => adjustWeight(m.id, -1)}
+                            disabled={currentWeight <= 1}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-subtle)',
+                              background: 'var(--bg-card)',
+                              color: 'var(--text-primary)',
+                              cursor: currentWeight <= 1 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                            }}
+                          >
+                            -
+                          </button>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              color: 'var(--accent-mint)',
+                              minWidth: '16px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {currentWeight}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => adjustWeight(m.id, 1)}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-subtle)',
+                              background: 'var(--bg-card)',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '12px',
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Custom Guests List */}
+            {customGuests.length > 0 && (
+              <div style={{ marginTop: '14px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {customGuests.map((g) => (
+                  <div
+                    key={g.id}
+                    style={{
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '4px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span>
+                      {g.name} ({g.weight} suất)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeGuest(g.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <X size={12} />
                     </button>
                   </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add extra guest */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <input
+                type="text"
+                placeholder="+ Thêm bạn/khách đi cùng..."
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGuest())}
+                className="input-field"
+                style={{ fontSize: '12px', padding: '8px 12px' }}
+              />
+              <button
+                type="button"
+                onClick={addGuest}
+                className="btn btn-secondary btn-sm"
+                style={{ flexShrink: 0 }}
+              >
+                <Plus size={14} /> Thêm
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Chi phí (Tiền sân, Cầu, Nước) */}
+          <div className="glass-card" style={{ padding: '18px' }}>
+            <h3
+              style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--accent-mint-light)',
+              }}
+            >
+              <CreditCard size={17} /> 3. Các khoản chi phí
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Tiền sân */}
+              <div
+                style={{
+                  background: 'var(--bg-input)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏟️ Tiền sân</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-mint)' }}>
+                    {formatVND(courtAmount)}
+                  </span>
                 </div>
-              );
-            })}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Số tiền (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      step={5000}
+                      className="input-field"
+                      value={courtAmount}
+                      onChange={(e) => setCourtAmount(Number(e.target.value) || 0)}
+                      style={{ fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      Ai trả tiền trước?
+                    </label>
+                    <select
+                      className="input-field"
+                      value={courtPaidBy}
+                      onChange={(e) => setCourtPaidBy(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                    >
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiền cầu */}
+              <div
+                style={{
+                  background: 'var(--bg-input)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏸 Tiền quả cầu</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-mint)' }}>
+                    {formatVND(calculatedShuttleAmount)}
+                  </span>
+                </div>
+
+                {/* Mode toggle */}
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShuttleInputMode('qty')}
+                    className={`btn btn-sm ${
+                      shuttleInputMode === 'qty' ? 'btn-primary' : 'btn-secondary'
+                    }`}
+                    style={{ fontSize: '11px', padding: '4px 10px' }}
+                  >
+                    Tính theo số quả dùng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShuttleInputMode('amount')}
+                    className={`btn btn-sm ${
+                      shuttleInputMode === 'amount' ? 'btn-primary' : 'btn-secondary'
+                    }`}
+                    style={{ fontSize: '11px', padding: '4px 10px' }}
+                  >
+                    Nhập số tiền trực tiếp
+                  </button>
+                </div>
+
+                {shuttleInputMode === 'qty' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Số quả đánh ({shuttleQty} quả)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        className="input-field"
+                        value={shuttleQty}
+                        onChange={(e) => setShuttleQty(Number(e.target.value) || 0)}
+                        style={{ fontSize: '13px' }}
+                      />
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        Hộp 12 quả: {formatVND(customTubePrice)} (≈ 28.333đ/quả)
+                      </span>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Ai trả tiền cầu?
+                      </label>
+                      <select
+                        className="input-field"
+                        value={shuttlePaidBy}
+                        onChange={(e) => setShuttlePaidBy(e.target.value)}
+                        style={{ fontSize: '13px' }}
+                      >
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Số tiền cầu (VNĐ)
+                      </label>
+                      <input
+                        type="number"
+                        step={1000}
+                        className="input-field"
+                        value={directShuttleAmount}
+                        onChange={(e) => setDirectShuttleAmount(Number(e.target.value) || 0)}
+                        style={{ fontSize: '13px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Ai trả tiền cầu?
+                      </label>
+                      <select
+                        className="input-field"
+                        value={shuttlePaidBy}
+                        onChange={(e) => setShuttlePaidBy(e.target.value)}
+                        style={{ fontSize: '13px' }}
+                      >
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chi phí khác (Nước, ăn uống...) */}
+              {otherCosts.map((oc, index) => (
+                <div
+                  key={oc.id}
+                  style={{
+                    background: 'var(--bg-input)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                      Khoản chi thêm #{index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeOtherCost(oc.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-debt)',
+                        cursor: 'pointer',
+                        padding: '2px',
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Tên khoản chi (Nước...)"
+                      value={oc.title}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setOtherCosts((prev) =>
+                          prev.map((c) => (c.id === oc.id ? { ...c, title: val } : c))
+                        );
+                      }}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <input
+                      type="number"
+                      step={5000}
+                      className="input-field"
+                      value={oc.amount}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setOtherCosts((prev) =>
+                          prev.map((c) => (c.id === oc.id ? { ...c, amount: val } : c))
+                        );
+                      }}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <select
+                      className="input-field"
+                      value={oc.paidBy}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setOtherCosts((prev) =>
+                          prev.map((c) => (c.id === oc.id ? { ...c, paidBy: val } : c))
+                        );
+                      }}
+                      style={{ fontSize: '12px' }}
+                    >
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+
+              {/* Nút thêm nhanh khoản chi */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => addOtherCost('Nước uống', 40000)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '11px' }}
+                >
+                  <Plus size={13} /> + Nước uống (40k)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addOtherCost('Đồ ăn nhẹ', 60000)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '11px' }}
+                >
+                  <Plus size={13} /> + Đồ ăn nhẹ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addOtherCost('Chi phí khác', 30000)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '11px' }}
+                >
+                  <Plus size={13} /> + Khác
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================
+            CỘT PHẢI: KẾT QUẢ CHIA TIỀN TỰ ĐỘNG (REALTIME OUTPUT)
+        ======================================================== */}
+        <div className="sticky-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Card Tổng quan buổi cầu */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '20px',
+              border: '1.5px solid rgba(16, 185, 129, 0.4)',
+              background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(6, 78, 59, 0.2))',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'var(--accent-mint)',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                Kết quả tính toán
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {totalShares} suất chia
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div
+                style={{
+                  fontSize: '32px',
+                  fontWeight: 800,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {formatVND(grandTotal)}
+              </div>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>tổng tiền</span>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '16px',
+                paddingTop: '14px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mỗi suất phải trả</div>
+                <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-mint-light)' }}>
+                  {formatVND(costPerShare)}
+                  <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)' }}>
+                    {' '}
+                    / suất
+                  </span>
+                </div>
+              </div>
+
+              {/* Nút Copy Zalo nhanh */}
+              <button
+                type="button"
+                onClick={handleCopyZalo}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {copiedZalo ? <Check size={14} /> : <Copy size={14} />}
+                {copiedZalo ? 'Đã copy tin nhắn!' : 'Copy tin nhắn Zalo'}
+              </button>
+            </div>
+          </div>
+
+          {/* Card Ai chuyển cho ai & Mã QR */}
+          <div className="glass-card" style={{ padding: '18px' }}>
+            <h3
+              style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--accent-mint-light)',
+              }}
+            >
+              <QrCode size={17} /> Danh sách chuyển khoản ({transfers.length} giao dịch)
+            </h3>
+
+            {transfers.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '24px 12px',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                }}
+              >
+                {grandTotal === 0
+                  ? 'Hãy nhập tiền sân và tiền cầu bên trái để xem kết quả.'
+                  : '✅ Mọi người đã hòa tiền, không cần chuyển khoản!'}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {transfers.map((t, idx) => {
+                  const fromName =
+                    allParticipants.find((p) => p.id === t.fromMemberId)?.name ||
+                    'Thành viên';
+                  const toMember = members.find((m) => m.id === t.toMemberId);
+                  const toName = toMember?.displayName || 'Thành viên';
+
+                  const qrUrl = getVietQrUrl(
+                    toMember,
+                    t.amount,
+                    `${fromName} chuyen tien cau`
+                  );
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        background: 'var(--bg-input)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                          <span style={{ color: '#fda4af' }}>{fromName}</span>
+                          <span style={{ color: 'var(--text-muted)', margin: '0 6px' }}>➜</span>
+                          <span style={{ color: 'var(--accent-mint-light)' }}>{toName}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {toMember?.bankName ? `${toMember.bankName} - ${toMember.bankAccountNo}` : ''}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            fontSize: '15px',
+                            fontWeight: 800,
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          {formatVND(t.amount)}
+                        </div>
+
+                        {qrUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setZoomedQr({
+                                receiverName: toName,
+                                bankName: toMember?.bankName || 'Ngân hàng',
+                                accountNo: toMember?.bankAccountNo || '',
+                                amount: t.amount,
+                                qrUrl,
+                              })
+                            }
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '6px 8px', fontSize: '11px' }}
+                            title="Xem mã QR quét chuyển khoản"
+                          >
+                            <QrCode size={14} /> Mã QR
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Card Bảng phân chia từng người */}
+          <div className="glass-card" style={{ padding: '18px' }}>
+            <h3
+              style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                marginBottom: '10px',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Chi tiết từng người
+            </h3>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr
+                    style={{
+                      borderBottom: '1px solid var(--border-subtle)',
+                      color: 'var(--text-muted)',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <th style={{ padding: '6px 4px' }}>Tên</th>
+                    <th style={{ padding: '6px 4px', textAlign: 'center' }}>Suất</th>
+                    <th style={{ padding: '6px 4px', textAlign: 'right' }}>Đã ứng</th>
+                    <th style={{ padding: '6px 4px', textAlign: 'right' }}>Phải trả</th>
+                    <th style={{ padding: '6px 4px', textAlign: 'right' }}>Chênh lệch</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(sessionBalances).map((b, idx) => {
+                    const isCredit = b.net > 0;
+                    const isDebit = b.net < 0;
+
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                        }}
+                      >
+                        <td style={{ padding: '8px 4px', fontWeight: 600 }}>{b.name}</td>
+                        <td style={{ padding: '8px 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          {b.weight}
+                        </td>
+                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                          {b.paid > 0 ? formatVND(b.paid) : '0đ'}
+                        </td>
+                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                          {formatVND(b.share)}
+                        </td>
+                        <td
+                          style={{
+                            padding: '8px 4px',
+                            textAlign: 'right',
+                            fontWeight: 700,
+                            color: isCredit
+                              ? 'var(--color-credit)'
+                              : isDebit
+                              ? 'var(--color-debt)'
+                              : 'var(--text-muted)',
+                          }}
+                        >
+                          {isCredit ? `+${formatVND(b.net)}` : isDebit ? formatVND(b.net) : '0đ'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* MAIN BUTTON: LƯU & ĐỒNG BỘ GOOGLE SHEET */}
+          <button
+            type="button"
+            onClick={handleSyncToGoogleSheet}
+            disabled={syncStatus.loading || grandTotal <= 0}
+            className="btn btn-primary"
+            style={{
+              padding: '16px',
+              fontSize: '15px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              boxShadow: 'var(--shadow-glow)',
+            }}
+          >
+            <FileSpreadsheet size={20} />
+            {syncStatus.loading
+              ? 'Đang gửi sang Google Sheet...'
+              : 'Lưu & Đẩy Sang Google Sheet'}
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          MODAL: PHÓNG TO MÃ QR CHUYỂN KHOẢN
+      ======================================================== */}
+      {zoomedQr && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+          onClick={() => setZoomedQr(null)}
+        >
+          <div
+            className="glass-card"
+            style={{
+              maxWidth: '380px',
+              width: '100%',
+              padding: '24px',
+              textAlign: 'center',
+              position: 'relative',
+              background: '#0f172a',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setZoomedQr(null)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>
+              Quét mã chuyển cho {zoomedQr.receiverName}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>
+              Số tiền:{' '}
+              <strong style={{ color: 'var(--accent-mint)', fontSize: '15px' }}>
+                {formatVND(zoomedQr.amount)}
+              </strong>
+            </p>
+
+            <div
+              style={{
+                background: '#fff',
+                padding: '12px',
+                borderRadius: 'var(--radius-md)',
+                display: 'inline-block',
+                marginBottom: '16px',
+              }}
+            >
+              <img
+                src={zoomedQr.qrUrl}
+                alt="QR Chuyển khoản"
+                style={{ width: '220px', height: '220px', objectFit: 'contain' }}
+              />
+            </div>
+
+            <div
+              style={{
+                background: 'var(--bg-input)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '12px',
+                textAlign: 'left',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}
+            >
+              <div>
+                Ngân hàng: <strong>{zoomedQr.bankName}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>
+                  STK: <strong>{zoomedQr.accountNo}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(zoomedQr.accountNo)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '2px 8px', fontSize: '11px' }}
+                >
+                  Copy STK
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 3. GROUP BALANCE OVERVIEW */}
-      <div>
+      {/* ========================================================
+          MODAL: CÀI ĐẶT LIÊN KẾT GOOGLE SHEET (WEBHOOK)
+      ======================================================== */}
+      {showSheetSettings && (
         <div
           style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '12px',
+            justifyContent: 'center',
+            padding: '16px',
           }}
+          onClick={() => setShowSheetSettings(false)}
         >
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Số dư toàn nhóm</h3>
           <div
+            className="glass-card"
             style={{
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: groupSum === 0 ? 'var(--color-credit)' : 'var(--color-debt)',
-              background: groupSum === 0 ? 'var(--color-credit-bg)' : 'var(--color-debt-bg)',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
+              maxWidth: '560px',
+              width: '100%',
+              padding: '24px',
+              position: 'relative',
+              background: '#0f172a',
+              maxHeight: '90vh',
+              overflowY: 'auto',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <ShieldCheck size={12} />
-            {groupSum === 0 ? 'Sổ cái cân bằng (0đ)' : `Lệch: ${formatVND(groupSum)}`}
-          </div>
-        </div>
+            <button
+              onClick={() => setShowSheetSettings(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={20} />
+            </button>
 
-        <div className="glass-card" style={{ padding: '8px 12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {sortedMembers.map((m, idx) => {
-              const mb = balances[m.id];
-              const bal = mb?.balance || 0;
-              const isMySelf = m.id === currentMember?.id;
-              const isMemberCreditor = bal >= state.settings.doneTolerance;
-              const isMemberDebtor = bal <= -state.settings.doneTolerance;
-
-              return (
-                <div
-                  key={m.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 6px',
-                    borderBottom:
-                      idx < sortedMembers.length - 1
-                        ? '1px solid var(--border-subtle)'
-                        : 'none',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        backgroundColor: m.avatarColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '13px',
-                      }}
-                    >
-                      {m.displayName.charAt(0)}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: isMySelf ? 700 : 500, fontSize: '14px' }}>
-                        {m.displayName} {isMySelf && <span style={{ color: 'var(--accent-mint)' }}>(Bạn)</span>}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Đã chi: {formatVND(mb?.totalPaid || 0)} • Nợ: {formatVND(mb?.totalOwed || 0)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        color: isMemberCreditor
-                          ? 'var(--color-credit)'
-                          : isMemberDebtor
-                          ? 'var(--color-debt)'
-                          : 'var(--color-done)',
-                      }}
-                    >
-                      {formatVND(bal, true)}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      {isMemberCreditor ? 'Được nhận' : isMemberDebtor ? 'Cần chuyển' : 'Đã xong ✓'}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* 4. RECENT SESSIONS */}
-      <div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '12px',
-          }}
-        >
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Buổi cầu gần đây</h3>
-          <Link
-            href="/sessions"
-            style={{
-              fontSize: '13px',
-              color: 'var(--accent-mint)',
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            Xem tất cả
-          </Link>
-        </div>
-
-        {sessions.length === 0 ? (
-          <div className="glass-card" style={{ textAlign: 'center', padding: '32px 16px' }}>
-            <Calendar size={36} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
-              Chưa có buổi cầu nào được tạo.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <FileSpreadsheet size={22} color="var(--accent-mint)" />
+              <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Liên Kết Google Sheet Tự Động</h3>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px' }}>
+              Chỉ cần cấu hình 1 lần, mỗi khi bạn bấm &quot;Lưu & Đẩy Sang Google Sheet&quot;, hệ thống
+              sẽ tự động tạo tab mới theo ngày và điền bảng chi tiết.
             </p>
-            <Link href="/sessions/new" className="btn btn-primary btn-sm">
-              <Plus size={14} /> Tạo buổi cầu đầu tiên
-            </Link>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {sessions.slice(0, 3).map((session) => {
-              const sessionExpenses = expenses.filter((e) => e.sessionId === session.id);
-              const totalCost = sessionExpenses.reduce((s, e) => s + e.amount, 0);
 
-              return (
-                <Link
-                  key={session.id}
-                  href={`/sessions/${session.id}`}
-                  style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div className="glass-card interactive" style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '15px' }}>
-                          {session.title || `Buổi cầu ${formatDate(session.date)}`}
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {formatDate(session.date)} • {session.participants.length} người tham gia
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
-                          {formatVND(totalCost)}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--accent-mint)' }}>
-                          {sessionExpenses.length} khoản chi
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+            {/* Bước 1: Dán URL Webhook */}
+            <div style={{ marginBottom: '20px' }}>
+              <label className="input-label" style={{ fontWeight: 700 }}>
+                1. Dán URL Webhook Google Apps Script của bạn:
+              </label>
+              <input
+                type="url"
+                className="input-field"
+                placeholder="https://script.google.com/macros/s/.../exec"
+                value={webhookUrl}
+                onChange={(e) => handleSaveWebhook(e.target.value)}
+                style={{ fontSize: '13px' }}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--accent-mint)', marginTop: '4px', display: 'block' }}>
+                {webhookUrl ? '✓ Đã lưu URL vào trình duyệt của bạn.' : 'Chưa có URL? Xem hướng dẫn 1 phút bên dưới.'}
+              </span>
+            </div>
+
+            {/* Hướng dẫn 3 bước */}
+            <div
+              style={{
+                background: 'var(--bg-input)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                fontSize: '12px',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                📖 Hướng dẫn lấy URL Webhook (chỉ mất 1 phút):
+              </div>
+              <ol style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li>
+                  Mở file Google Sheet của nhóm bạn.
+                </li>
+                <li>
+                  Vào menu <strong>Tiện ích mở rộng (Extensions)</strong> ➜ chọn <strong>Apps Script</strong>.
+                </li>
+                <li>
+                  Xóa code cũ, dán đoạn mã bên dưới vào và bấm <strong>Lưu</strong> (biểu tượng đĩa mềm).
+                </li>
+                <li>
+                  Bấm nút <strong>Triển khai (Deploy)</strong> ➜ <strong>Tùy chọn triển khai mới (New deployment)</strong>.
+                </li>
+                <li>
+                  Bấm bánh răng ➜ Chọn <strong>Ứng dụng web (Web App)</strong>.
+                  <br />- Mục <em>Ai có quyền truy cập (Who has access)</em>: chọn <strong>Bất kỳ ai (Anyone)</strong>.
+                </li>
+                <li>
+                  Bấm <strong>Triển khai</strong> và <strong>Sao chép URL ứng dụng web</strong> dán vào ô bên trên!
+                </li>
+              </ol>
+
+              {/* Nút copy mã Apps Script */}
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
+                  setScriptCopied(true);
+                  setTimeout(() => setScriptCopied(false), 2500);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
+              >
+                {scriptCopied ? <Check size={14} /> : <Copy size={14} />}
+                {scriptCopied ? 'Đã copy mã Apps Script!' : 'Copy mã Google Apps Script mẫu'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSheetSettings(false)}
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '12px' }}
+            >
+              Hoàn tất & Đóng
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
