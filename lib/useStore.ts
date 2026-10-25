@@ -110,7 +110,13 @@ export function useStore() {
       participants: { memberId: string; weight: number }[];
       courtCost?: { amount: number; paidBy: string };
       shuttleCost?: { qty: number; paidBy: string; tubePrice?: number };
-      otherCosts?: { title: string; category: Category; amount: number; paidBy: string }[];
+      otherCosts?: {
+        title: string;
+        category: Category;
+        amount: number;
+        paidBy: string;
+        shares?: { memberId: string; amount: number }[];
+      }[];
     }) => {
       const sessionId = 'session-' + Date.now();
       const newSession: Session = {
@@ -172,6 +178,11 @@ export function useStore() {
       if (params.otherCosts) {
         params.otherCosts.forEach((item, idx) => {
           if (item.amount > 0) {
+            const shares =
+              item.shares && item.shares.length > 0
+                ? item.shares
+                : calculateWeightedSplit(item.amount, params.participants);
+
             newExpenses.push({
               id: 'exp-' + Date.now() + '-other-' + idx,
               sessionId,
@@ -179,8 +190,8 @@ export function useStore() {
               category: item.category,
               amount: item.amount,
               paidBy: item.paidBy,
-              splitMethod: 'weighted',
-              shares: calculateWeightedSplit(item.amount, params.participants),
+              splitMethod: item.shares ? 'exact' : 'weighted',
+              shares,
               createdAt: new Date().toISOString(),
             });
           }

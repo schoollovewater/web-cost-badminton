@@ -24,6 +24,8 @@ import {
   Sparkles,
   ExternalLink,
   Users,
+  UserCheck,
+  UserX,
   Calendar,
   CreditCard,
   Eye,
@@ -32,13 +34,20 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  ArrowRight,
+  HandCoins,
 } from 'lucide-react';
 
-interface OtherExpense {
+export type SplitMode = 'all' | 'custom' | 'debt';
+
+export interface OtherExpense {
   id: string;
   title: string;
   amount: number;
-  paidBy: string;
+  paidBy: string; // memberId who paid
+  splitType: SplitMode;
+  beneficiaryIds: string[]; // memberIds sharing this (when 'custom')
+  debtorId?: string; // memberId who owes paidBy (when 'debt')
 }
 
 export default function BadmintonCalculatorPage() {
@@ -92,7 +101,7 @@ export default function BadmintonCalculatorPage() {
   >([]);
   const [newGuestName, setNewGuestName] = useState<string>('');
 
-  // Expenses
+  // Court & Shuttle Costs
   const defaultPayer = members[0]?.id || 'toan';
   const [courtAmount, setCourtAmount] = useState<number>(240000);
   const [courtPaidBy, setCourtPaidBy] = useState<string>(defaultPayer);
@@ -105,6 +114,7 @@ export default function BadmintonCalculatorPage() {
   const [directShuttleAmount, setDirectShuttleAmount] = useState<number>(113333);
   const [shuttlePaidBy, setShuttlePaidBy] = useState<string>(defaultPayer);
 
+  // Additional expenses: includes group splits (Toàn, Kiên, Tú) & 1-on-1 personal debts
   const [otherCosts, setOtherCosts] = useState<OtherExpense[]>([]);
 
   // Modals & Feedback
@@ -118,7 +128,7 @@ export default function BadmintonCalculatorPage() {
   } | null>(null);
 
   // --- 2. TÍNH TOÁN REALTIME ---
-  // A. All active participants (including guests)
+  // A. All active participants in badminton session
   const allParticipants = useMemo(() => {
     const list: { id: string; name: string; weight: number }[] = [];
     for (const m of members) {
@@ -161,72 +171,157 @@ export default function BadmintonCalculatorPage() {
   }, [otherCosts]);
 
   const grandTotal = courtAmount + calculatedShuttleAmount + totalOtherAmount;
-  const costPerShare = totalShares > 0 ? Math.round(grandTotal / totalShares) : 0;
+  const costPerShare = totalShares > 0 ? Math.round((courtAmount + calculatedShuttleAmount) / totalShares) : 0;
 
-  // D. Weighted Split Calculation (Largest Remainder)
-  const participantSplitMap = useMemo(() => {
-    if (allParticipants.length === 0 || grandTotal <= 0) return {};
-    const splitInput = allParticipants.map((p) => ({
-      memberId: p.id,
-      weight: p.weight,
-    }));
-    const shares = calculateWeightedSplit(grandTotal, splitInput);
+  // D. Base Court & Shuttle split (split among all session participants by weight)
+  const baseCourtSplit = useMemo(() => {
+    if (allParticipants.length === 0 || courtAmount <= 0) return {};
+    const splitInput = allParticipants.map((p) => ({ memberId: p.id, weight: p.weight }));
+    const shares = calculateWeightedSplit(courtAmount, splitInput);
     const map: Record<string, number> = {};
-    for (const s of shares) {
-      map[s.memberId] = s.amount;
-    }
+    for (const s of shares) map[s.memberId] = s.amount;
     return map;
-  }, [allParticipants, grandTotal]);
+  }, [allParticipants, courtAmount]);
 
-  // E. Net Balances for THIS SESSION: (Paid - Share)
+  const baseShuttleSplit = useMemo(() => {
+    if (allParticipants.length === 0 || calculatedShuttleAmount <= 0) return {};
+    const splitInput = allParticipants.map((p) => ({ memberId: p.id, weight: p.weight }));
+    const shares = calculateWeightedSplit(calculatedShuttleAmount, splitInput);
+    const map: Record<string, number> = {};
+    for (const s of shares) map[s.memberId] = s.amount;
+    return map;
+  }, [allParticipants, calculatedShuttleAmount]);
+
+  // E. All involved members (session participants + any member in otherCosts/debts)
+  const allInvolvedMembers = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; weight: number }>();
+    for (const p of allParticipants) {
+      map.set(p.id, { id: p.id, name: p.name, weight: p.weight });
+    }
+    // Also include anyone mentioned in otherCosts even if not in session
+    for (const oc of otherCosts) {
+      if (oc.paidBy && !map.has(oc.paidBy)) {
+        const m = members.find((x) => x.id === oc.paidBy);
+        if (m) map.set(m.id, { id: m.id, name: m.displayName, weight: 0 });
+      }
+      if (oc.splitType === 'debt' && oc.debtorId && !map.has(oc.debtorId)) {
+        const m = members.find((x) => x.id === oc.debtorId);
+        if (m) map.set(m.id, { id: m.id, name: m.displayName, weight: 0 });
+      }
+      if (oc.splitType === 'custom' && oc.beneficiaryIds) {
+        for (const bId of oc.beneficiaryIds) {
+          if (!map.has(bId)) {
+            const m = members.find((x) => x.id === bId);
+            if (m) map.set(m.id, { id: m.id, name: m.displayName, weight: 0 });
+          }
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [allParticipants, otherCosts, members]);
+
+  // F. Net Balances Calculation (Exact breakdown)
   const sessionBalances = useMemo(() => {
     const map: Record<
       string,
-      { name: string; weight: number; paid: number; share: number; net: number }
+      {
+        name: string;
+        weight: number;
+        paid: number;
+        courtShare: number;
+        shuttleShare: number;
+        otherShare: number;
+        debtShare: number;
+        totalShare: number;
+        net: number;
+      }
     > = {};
 
-    for (const p of allParticipants) {
+    for (const p of allInvolvedMembers) {
       map[p.id] = {
         name: p.name,
         weight: p.weight,
         paid: 0,
-        share: participantSplitMap[p.id] || 0,
+        courtShare: baseCourtSplit[p.id] || 0,
+        shuttleShare: baseShuttleSplit[p.id] || 0,
+        otherShare: 0,
+        debtShare: 0,
+        totalShare: 0,
         net: 0,
       };
     }
 
-    // Add court cost payer
+    // 1. Credit Court Payer
     if (courtAmount > 0 && map[courtPaidBy]) {
       map[courtPaidBy].paid += courtAmount;
     }
-    // Add shuttle cost payer
+    // 2. Credit Shuttle Payer
     if (calculatedShuttleAmount > 0 && map[shuttlePaidBy]) {
       map[shuttlePaidBy].paid += calculatedShuttleAmount;
     }
-    // Add other expenses payers
+
+    // 3. Process Each Other Expense
     for (const oc of otherCosts) {
-      if (oc.amount > 0 && map[oc.paidBy]) {
+      if (oc.amount <= 0) continue;
+
+      // Credit the payer
+      if (map[oc.paidBy]) {
         map[oc.paidBy].paid += oc.amount;
+      }
+
+      // Allocate the share depending on splitType:
+      if (oc.splitType === 'all') {
+        // Split across all session participants
+        if (allParticipants.length > 0) {
+          const splitInput = allParticipants.map((p) => ({ memberId: p.id, weight: p.weight }));
+          const shares = calculateWeightedSplit(oc.amount, splitInput);
+          for (const sh of shares) {
+            if (map[sh.memberId]) {
+              map[sh.memberId].otherShare += sh.amount;
+            }
+          }
+        }
+      } else if (oc.splitType === 'custom') {
+        // Split evenly across the specific group of beneficiaries
+        const bens = oc.beneficiaryIds.filter((id) => map[id]);
+        const targetBens = bens.length > 0 ? bens : [oc.paidBy];
+        const splitInput = targetBens.map((id) => ({ memberId: id, weight: 1 }));
+        const shares = calculateWeightedSplit(oc.amount, splitInput);
+        for (const sh of shares) {
+          if (map[sh.memberId]) {
+            map[sh.memberId].otherShare += sh.amount;
+          }
+        }
+      } else if (oc.splitType === 'debt') {
+        // 1-on-1 private debt: debtor owes 100% of this amount
+        const debtor = oc.debtorId || oc.paidBy;
+        if (map[debtor]) {
+          map[debtor].debtShare += oc.amount;
+        }
       }
     }
 
-    // Compute net
+    // Compute totalShare and net for everyone
     for (const id of Object.keys(map)) {
-      map[id].net = map[id].paid - map[id].share;
+      const item = map[id];
+      item.totalShare = item.courtShare + item.shuttleShare + item.otherShare + item.debtShare;
+      item.net = item.paid - item.totalShare;
     }
 
     return map;
   }, [
+    allInvolvedMembers,
     allParticipants,
-    participantSplitMap,
     courtAmount,
     courtPaidBy,
     calculatedShuttleAmount,
     shuttlePaidBy,
+    baseCourtSplit,
+    baseShuttleSplit,
     otherCosts,
   ]);
 
-  // F. Simplified Settle: Who pays whom
+  // G. Simplified Settlement: Who transfers to whom
   const transfers = useMemo(() => {
     const balanceRecord: Record<string, number> = {};
     for (const [id, data] of Object.entries(sessionBalances)) {
@@ -268,20 +363,48 @@ export default function BadmintonCalculatorPage() {
     setCustomGuests((prev) => prev.filter((g) => g.id !== guestId));
   };
 
-  const addOtherCost = (presetTitle?: string, presetAmount?: number) => {
+  // Add Other Cost with customizable splitType
+  const addOtherCost = (
+    title: string,
+    amount: number,
+    splitType: SplitMode = 'all',
+    beneficiaryIds: string[] = [],
+    debtorId?: string
+  ) => {
+    const initialBeneficiaries =
+      beneficiaryIds.length > 0
+        ? beneficiaryIds
+        : allParticipants.slice(0, 3).map((p) => p.id);
+
     setOtherCosts((prev) => [
       ...prev,
       {
-        id: 'other_' + Date.now(),
-        title: presetTitle || 'Nước uống',
-        amount: presetAmount || 40000,
+        id: 'other_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        title,
+        amount,
         paidBy: defaultPayer,
+        splitType,
+        beneficiaryIds: initialBeneficiaries,
+        debtorId: debtorId || (members[1]?.id || 'kien'),
       },
     ]);
   };
 
   const removeOtherCost = (id: string) => {
     setOtherCosts((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const toggleBeneficiary = (costId: string, memberId: string) => {
+    setOtherCosts((prev) =>
+      prev.map((c) => {
+        if (c.id !== costId) return c;
+        const current = c.beneficiaryIds || [];
+        const next = current.includes(memberId)
+          ? current.filter((id) => id !== memberId)
+          : [...current, memberId];
+        return { ...c, beneficiaryIds: next };
+      })
+    );
   };
 
   // VietQR URL builder helper
@@ -323,34 +446,48 @@ export default function BadmintonCalculatorPage() {
     let msg = `🏸 TỔNG KẾT TIỀN CẦU LÔNG — ${dateFormatted}`;
     if (title.trim()) msg += ` (${title.trim()})`;
     msg += `\n─────────────────────\n`;
-    msg += `💰 Tổng chi: ${formatVND(grandTotal)} (${totalShares} suất)\n`;
-    msg += `🎯 Mỗi suất: ${formatVND(costPerShare)} / suất\n\n`;
+    msg += `💰 Tổng chi: ${formatVND(grandTotal)}\n`;
+    if (totalShares > 0) {
+      msg += `🎯 Tiền cầu + sân (${totalShares} suất): ${formatVND(costPerShare)} / suất\n`;
+    }
+    msg += `\n📌 Chi tiết các khoản chi:\n`;
 
-    msg += `📌 Chi tiết khoản chi:\n`;
     const courtPayer = members.find((m) => m.id === courtPaidBy)?.displayName || 'Toàn';
-    msg += `• Sân: ${formatVND(courtAmount)} (${courtPayer} trả)\n`;
+    msg += `• Tiền sân: ${formatVND(courtAmount)} (${courtPayer} trả)\n`;
 
     const shuttlePayer = members.find((m) => m.id === shuttlePaidBy)?.displayName || 'Toàn';
     if (shuttleInputMode === 'qty') {
-      msg += `• Cầu: ${formatVND(calculatedShuttleAmount)} (${shuttleQty} quả - ${shuttlePayer} trả)\n`;
+      msg += `• Tiền cầu: ${formatVND(calculatedShuttleAmount)} (${shuttleQty} quả - ${shuttlePayer} trả)\n`;
     } else {
-      msg += `• Cầu: ${formatVND(calculatedShuttleAmount)} (${shuttlePayer} trả)\n`;
+      msg += `• Tiền cầu: ${formatVND(calculatedShuttleAmount)} (${shuttlePayer} trả)\n`;
     }
 
     for (const oc of otherCosts) {
       if (oc.amount > 0) {
         const payer = members.find((m) => m.id === oc.paidBy)?.displayName || 'Thành viên';
-        msg += `• ${oc.title}: ${formatVND(oc.amount)} (${payer} trả)\n`;
+        if (oc.splitType === 'all') {
+          msg += `• ${oc.title}: ${formatVND(oc.amount)} (${payer} trả — chia cả nhóm)\n`;
+        } else if (oc.splitType === 'custom') {
+          const names = oc.beneficiaryIds
+            .map((id) => members.find((m) => m.id === id)?.displayName || id)
+            .join(', ');
+          const perPerson =
+            oc.beneficiaryIds.length > 0 ? Math.round(oc.amount / oc.beneficiaryIds.length) : oc.amount;
+          msg += `• ${oc.title}: ${formatVND(oc.amount)} (${payer} trả — chia ${oc.beneficiaryIds.length} người: ${names} — ${formatVND(perPerson)}/người)\n`;
+        } else if (oc.splitType === 'debt') {
+          const debtorName = members.find((m) => m.id === oc.debtorId)?.displayName || 'Thành viên';
+          msg += `• ${oc.title}: ${formatVND(oc.amount)} (${debtorName} nợ riêng ${payer})\n`;
+        }
       }
     }
 
-    msg += `\n💸 AI CHUYỂN CHO AI:\n`;
+    msg += `\n💸 AI CHUYỂN CHO AI (ĐÃ TỰ ĐỘNG BÙ TRỪ TẤT CẢ):\n`;
     if (transfers.length === 0) {
       msg += `✅ Mọi người đã hòa tiền, không cần chuyển khoản!\n`;
     } else {
       transfers.forEach((t, idx) => {
         const fromName =
-          allParticipants.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
+          allInvolvedMembers.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
         const toMember = members.find((m) => m.id === t.toMemberId);
         const toName = toMember?.displayName || 'Thành viên';
         const bankInfo = toMember?.bankAccountNo
@@ -376,8 +513,37 @@ export default function BadmintonCalculatorPage() {
 
     setSyncStatus({ loading: true });
 
-    // Save session locally as well
     try {
+      // 1. Calculate explicit shares for each otherCost item
+      const formattedOtherCosts = otherCosts
+        .filter((c) => c.amount > 0)
+        .map((oc) => {
+          let shares: { memberId: string; amount: number }[] = [];
+          if (oc.splitType === 'custom') {
+            const bens = oc.beneficiaryIds.length > 0 ? oc.beneficiaryIds : [oc.paidBy];
+            shares = calculateWeightedSplit(
+              oc.amount,
+              bens.map((id) => ({ memberId: id, weight: 1 }))
+            );
+          } else if (oc.splitType === 'debt') {
+            shares = [{ memberId: oc.debtorId || oc.paidBy, amount: oc.amount }];
+          } else {
+            shares = calculateWeightedSplit(
+              oc.amount,
+              allParticipants.map((p) => ({ memberId: p.id, weight: p.weight }))
+            );
+          }
+
+          return {
+            title: oc.title,
+            category: 'drink' as const,
+            amount: oc.amount,
+            paidBy: oc.paidBy,
+            shares,
+          };
+        });
+
+      // 2. Save session locally
       createSession({
         date,
         title: title.trim() || undefined,
@@ -394,17 +560,10 @@ export default function BadmintonCalculatorPage() {
                 tubePrice: customTubePrice,
               }
             : undefined,
-        otherCosts: otherCosts
-          .filter((c) => c.amount > 0)
-          .map((c) => ({
-            title: c.title,
-            amount: c.amount,
-            paidBy: c.paidBy,
-            category: 'drink' as const,
-          })),
+        otherCosts: formattedOtherCosts,
       });
 
-      // Prepare Google Sheet Payload
+      // 3. Prepare Google Sheet Payload
       const dateObj = new Date(date);
       const day = ('0' + dateObj.getDate()).slice(-2);
       const month = ('0' + (dateObj.getMonth() + 1)).slice(-2);
@@ -424,26 +583,39 @@ export default function BadmintonCalculatorPage() {
           amount: calculatedShuttleAmount,
           paidBy: members.find((m) => m.id === shuttlePaidBy)?.displayName || 'Toàn',
         },
-        ...otherCosts.map((oc) => ({
-          title: oc.title,
-          amount: oc.amount,
-          paidBy: members.find((m) => m.id === oc.paidBy)?.displayName || 'Thành viên',
-        })),
+        ...otherCosts.map((oc) => {
+          const payer = members.find((m) => m.id === oc.paidBy)?.displayName || 'Thành viên';
+          let note = oc.title;
+          if (oc.splitType === 'custom') {
+            const names = oc.beneficiaryIds
+              .map((id) => members.find((m) => m.id === id)?.displayName || id)
+              .join(', ');
+            note = `${oc.title} (chia: ${names})`;
+          } else if (oc.splitType === 'debt') {
+            const debtor = members.find((m) => m.id === oc.debtorId)?.displayName || 'Thành viên';
+            note = `${oc.title} (${debtor} nợ riêng)`;
+          }
+          return {
+            title: note,
+            amount: oc.amount,
+            paidBy: payer,
+          };
+        }),
       ].filter((e) => e.amount > 0);
 
       const memberList = Object.values(sessionBalances).map((b) => ({
         name: b.name,
         weight: b.weight,
         paid: b.paid,
-        share: b.share,
+        share: b.totalShare,
         net: b.net,
       }));
 
       const transferList = transfers.map((t) => {
         const fromName =
-          allParticipants.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
+          allInvolvedMembers.find((p) => p.id === t.fromMemberId)?.name || 'Thành viên';
         const toName =
-          allParticipants.find((p) => p.id === t.toMemberId)?.name || 'Thành viên';
+          allInvolvedMembers.find((p) => p.id === t.toMemberId)?.name || 'Thành viên';
         return {
           from: fromName,
           to: toName,
@@ -452,7 +624,7 @@ export default function BadmintonCalculatorPage() {
         };
       });
 
-      const result = await syncSessionToGoogleSheet(webhookUrl, {
+      await syncSessionToGoogleSheet(webhookUrl, {
         date,
         sheetName: tabName,
         title: title.trim() || undefined,
@@ -831,7 +1003,7 @@ export default function BadmintonCalculatorPage() {
             </div>
           </div>
 
-          {/* Card 3: Chi phí (Tiền sân, Cầu, Nước) */}
+          {/* Card 3: Chi phí (Tiền sân, Cầu, Nước nhóm nhỏ, Nợ riêng) */}
           <div className="glass-card" style={{ padding: '18px' }}>
             <h3
               style={{
@@ -844,7 +1016,7 @@ export default function BadmintonCalculatorPage() {
                 color: 'var(--accent-mint-light)',
               }}
             >
-              <CreditCard size={17} /> 3. Các khoản chi phí
+              <CreditCard size={17} /> 3. Các khoản chi phí & Nợ riêng
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -860,7 +1032,7 @@ export default function BadmintonCalculatorPage() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏟️ Tiền sân</span>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏟️ Tiền sân (chia cả nhóm)</span>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-mint)' }}>
                     {formatVND(courtAmount)}
                   </span>
@@ -913,7 +1085,7 @@ export default function BadmintonCalculatorPage() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏸 Tiền quả cầu</span>
+                  <span style={{ fontSize: '14px', fontWeight: 700 }}>🏸 Tiền quả cầu (chia cả nhóm)</span>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-mint)' }}>
                     {formatVND(calculatedShuttleAmount)}
                   </span>
@@ -1018,111 +1190,317 @@ export default function BadmintonCalculatorPage() {
                 )}
               </div>
 
-              {/* Chi phí khác (Nước, ăn uống...) */}
-              {otherCosts.map((oc, index) => (
-                <div
-                  key={oc.id}
-                  style={{
-                    background: 'var(--bg-input)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                      Khoản chi thêm #{index + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeOtherCost(oc.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--color-debt)',
-                        cursor: 'pointer',
-                        padding: '2px',
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+              {/* CHI PHÍ RIÊNG & NỢ (NƯỚC NHÓM NHỎ, NỢ 2 NGƯỜI) */}
+              {otherCosts.map((oc, index) => {
+                const payerName = members.find((m) => m.id === oc.paidBy)?.displayName || 'Người ứng';
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Tên khoản chi (Nước...)"
-                      value={oc.title}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setOtherCosts((prev) =>
-                          prev.map((c) => (c.id === oc.id ? { ...c, title: val } : c))
-                        );
-                      }}
-                      style={{ fontSize: '12px' }}
-                    />
-                    <input
-                      type="number"
-                      step={5000}
-                      className="input-field"
-                      value={oc.amount}
-                      onChange={(e) => {
-                        const val = Number(e.target.value) || 0;
-                        setOtherCosts((prev) =>
-                          prev.map((c) => (c.id === oc.id ? { ...c, amount: val } : c))
-                        );
-                      }}
-                      style={{ fontSize: '12px' }}
-                    />
-                    <select
-                      className="input-field"
-                      value={oc.paidBy}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setOtherCosts((prev) =>
-                          prev.map((c) => (c.id === oc.id ? { ...c, paidBy: val } : c))
-                        );
-                      }}
-                      style={{ fontSize: '12px' }}
-                    >
-                      {members.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
+                return (
+                  <div
+                    key={oc.id}
+                    style={{
+                      background: 'var(--bg-input)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    {/* Header: Title + Amount + Payer + Delete */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Khoản chi thêm #{index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeOtherCost(oc.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-debt)',
+                          cursor: 'pointer',
+                          padding: '2px',
+                        }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
 
-              {/* Nút thêm nhanh khoản chi */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Tên khoản chi</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Nước uống / Cơm trưa..."
+                          value={oc.title}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setOtherCosts((prev) =>
+                              prev.map((c) => (c.id === oc.id ? { ...c, title: val } : c))
+                            );
+                          }}
+                          style={{ fontSize: '12px' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Số tiền (VNĐ)</label>
+                        <input
+                          type="number"
+                          step={5000}
+                          className="input-field"
+                          value={oc.amount}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setOtherCosts((prev) =>
+                              prev.map((c) => (c.id === oc.id ? { ...c, amount: val } : c))
+                            );
+                          }}
+                          style={{ fontSize: '12px' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Ai ứng trước?</label>
+                        <select
+                          className="input-field"
+                          value={oc.paidBy}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setOtherCosts((prev) =>
+                              prev.map((c) => (c.id === oc.id ? { ...c, paidBy: val } : c))
+                            );
+                          }}
+                          style={{ fontSize: '12px' }}
+                        >
+                          {members.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.displayName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Split Type Selector */}
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                        Cách phân chia tiền:
+                      </label>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOtherCosts((prev) =>
+                              prev.map((c) => (c.id === oc.id ? { ...c, splitType: 'all' } : c))
+                            )
+                          }
+                          className={`btn btn-sm ${oc.splitType === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: '11px', padding: '4px 10px' }}
+                        >
+                          👥 Cả nhóm đi cầu
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOtherCosts((prev) =>
+                              prev.map((c) =>
+                                c.id === oc.id
+                                  ? {
+                                      ...c,
+                                      splitType: 'custom',
+                                      beneficiaryIds:
+                                        c.beneficiaryIds.length > 0
+                                          ? c.beneficiaryIds
+                                          : [oc.paidBy, 'kien', 'tu'].filter(Boolean),
+                                    }
+                                  : c
+                              )
+                            )
+                          }
+                          className={`btn btn-sm ${oc.splitType === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: '11px', padding: '4px 10px' }}
+                        >
+                          👤👤 Nhóm nhỏ (Toàn, Kiên, Tú...)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setOtherCosts((prev) =>
+                              prev.map((c) =>
+                                c.id === oc.id
+                                  ? {
+                                      ...c,
+                                      splitType: 'debt',
+                                      debtorId: c.debtorId || (oc.paidBy === 'toan' ? 'kien' : 'toan'),
+                                    }
+                                  : c
+                              )
+                            )
+                          }
+                          className={`btn btn-sm ${oc.splitType === 'debt' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: '11px', padding: '4px 10px' }}
+                        >
+                          🤝 Nợ riêng 2 người (Ai nợ ai)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* If 'custom': Member selection chips */}
+                    {oc.splitType === 'custom' && (
+                      <div
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '10px 12px',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Tick chọn những người cùng uống nước / chia tiền:
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {members.map((m) => {
+                            const isIncluded = oc.beneficiaryIds.includes(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => toggleBeneficiary(oc.id, m.id)}
+                                style={{
+                                  border: `1px solid ${
+                                    isIncluded ? 'var(--accent-mint)' : 'var(--border-subtle)'
+                                  }`,
+                                  background: isIncluded ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card)',
+                                  color: isIncluded ? 'var(--accent-mint-light)' : 'var(--text-muted)',
+                                  borderRadius: 'var(--radius-full)',
+                                  padding: '3px 10px',
+                                  fontSize: '11px',
+                                  fontWeight: isIncluded ? 700 : 500,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                {isIncluded ? <Check size={11} strokeWidth={3} /> : null}
+                                {m.displayName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-mint-light)', marginTop: '4px' }}>
+                          ✓ {payerName} trả {formatVND(oc.amount)} ➜ Chia đều cho{' '}
+                          <strong>{oc.beneficiaryIds.length} người</strong> (≈{' '}
+                          {formatVND(
+                            oc.beneficiaryIds.length > 0
+                              ? Math.round(oc.amount / oc.beneficiaryIds.length)
+                              : oc.amount
+                          )}
+                          /người)
+                        </div>
+                      </div>
+                    )}
+
+                    {/* If 'debt': 1-on-1 debt selector */}
+                    {oc.splitType === 'debt' && (
+                      <div
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '10px 12px',
+                          border: '1px solid rgba(244, 63, 94, 0.25)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Ai nợ:</span>
+                          <select
+                            className="input-field"
+                            value={oc.debtorId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setOtherCosts((prev) =>
+                                prev.map((c) => (c.id === oc.id ? { ...c, debtorId: val } : c))
+                              );
+                            }}
+                            style={{ width: 'auto', fontSize: '12px', padding: '4px 10px' }}
+                          >
+                            {members.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.displayName}
+                              </option>
+                            ))}
+                          </select>
+
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            nợ <strong>{payerName}</strong>:
+                          </span>
+                          <span style={{ fontSize: '14px', fontWeight: 800, color: '#fda4af' }}>
+                            {formatVND(oc.amount)}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '11px', color: '#fda4af', marginTop: '2px' }}>
+                          ➜ Khoản này sẽ được cộng thẳng vào số tiền chuyển khoản giữa 2 người (bù trừ tự động).
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* NÚT THÊM NHANH KHOẢN CHI & NỢ */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => addOtherCost('Nước uống', 40000)}
+                  onClick={() =>
+                    addOtherCost(
+                      'Nước uống',
+                      45000,
+                      'custom',
+                      ['toan', 'kien', 'tu'].filter(Boolean)
+                    )
+                  }
                   className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '11px' }}
+                  style={{ fontSize: '11px', borderColor: 'rgba(16, 185, 129, 0.4)' }}
                 >
-                  <Plus size={13} /> + Nước uống (40k)
+                  <Plus size={13} /> + Nước 3 người (Toàn, Kiên, Tú: 45k)
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => addOtherCost('Đồ ăn nhẹ', 60000)}
+                  onClick={() =>
+                    addOtherCost(
+                      'Khoản nợ riêng',
+                      50000,
+                      'debt',
+                      [],
+                      'kien'
+                    )
+                  }
                   className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '11px' }}
+                  style={{ fontSize: '11px', borderColor: 'rgba(244, 63, 94, 0.4)' }}
                 >
-                  <Plus size={13} /> + Đồ ăn nhẹ
+                  <HandCoins size={13} /> + Nợ riêng 2 người (Ai nợ ai)
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => addOtherCost('Chi phí khác', 30000)}
+                  onClick={() => addOtherCost('Đồ ăn / Chi phí khác', 40000, 'all')}
                   className="btn btn-secondary btn-sm"
                   style={{ fontSize: '11px' }}
                 >
-                  <Plus size={13} /> + Khác
+                  <Plus size={13} /> + Khoản chia cả nhóm
                 </button>
               </div>
             </div>
@@ -1165,7 +1543,7 @@ export default function BadmintonCalculatorPage() {
                 Kết quả tính toán
               </span>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {totalShares} suất chia
+                {totalShares} suất cầu ({allInvolvedMembers.length} người)
               </span>
             </div>
 
@@ -1180,7 +1558,7 @@ export default function BadmintonCalculatorPage() {
               >
                 {formatVND(grandTotal)}
               </div>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>tổng tiền</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>tổng chi</span>
             </div>
 
             <div
@@ -1194,7 +1572,7 @@ export default function BadmintonCalculatorPage() {
               }}
             >
               <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mỗi suất phải trả</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Mỗi suất sân + cầu</div>
                 <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-mint-light)' }}>
                   {formatVND(costPerShare)}
                   <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)' }}>
@@ -1243,14 +1621,14 @@ export default function BadmintonCalculatorPage() {
                 }}
               >
                 {grandTotal === 0
-                  ? 'Hãy nhập tiền sân và tiền cầu bên trái để xem kết quả.'
+                  ? 'Hãy nhập chi phí bên trái để xem kết quả.'
                   : '✅ Mọi người đã hòa tiền, không cần chuyển khoản!'}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {transfers.map((t, idx) => {
                   const fromName =
-                    allParticipants.find((p) => p.id === t.fromMemberId)?.name ||
+                    allInvolvedMembers.find((p) => p.id === t.fromMemberId)?.name ||
                     'Thành viên';
                   const toMember = members.find((m) => m.id === t.toMemberId);
                   const toName = toMember?.displayName || 'Thành viên';
@@ -1333,7 +1711,7 @@ export default function BadmintonCalculatorPage() {
                 color: 'var(--text-secondary)',
               }}
             >
-              Chi tiết từng người
+              Chi tiết từng người (Đã bao gồm nợ & nước riêng)
             </h3>
 
             <div style={{ overflowX: 'auto' }}>
@@ -1367,13 +1745,13 @@ export default function BadmintonCalculatorPage() {
                       >
                         <td style={{ padding: '8px 4px', fontWeight: 600 }}>{b.name}</td>
                         <td style={{ padding: '8px 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                          {b.weight}
+                          {b.weight > 0 ? b.weight : '—'}
                         </td>
                         <td style={{ padding: '8px 4px', textAlign: 'right' }}>
                           {b.paid > 0 ? formatVND(b.paid) : '0đ'}
                         </td>
                         <td style={{ padding: '8px 4px', textAlign: 'right' }}>
-                          {formatVND(b.share)}
+                          {formatVND(b.totalShare)}
                         </td>
                         <td
                           style={{
